@@ -10,7 +10,7 @@ import unittest
 import ddt
 import mock
 from freezegun import freeze_time
-from integrated_channels.integrated_channel.learner_data import BaseLearnerExporter
+from integrated_channels.integrated_channel.exporters.learner_data import LearnerExporter
 from integrated_channels.sap_success_factors.models import SAPSuccessFactorsEnterpriseCustomerConfiguration
 from pytest import mark
 from slumber.exceptions import HttpNotFoundError
@@ -29,9 +29,9 @@ from test_utils.factories import (
 
 @mark.django_db
 @ddt.ddt
-class TestBaseLearnerExporter(unittest.TestCase):
+class TestLearnerExporter(unittest.TestCase):
     """
-    Tests of BaseLearnerExporter class.
+    Tests of LearnerExporter class.
     """
 
     # Use these tz-aware datetimes in tests
@@ -71,16 +71,16 @@ class TestBaseLearnerExporter(unittest.TestCase):
         self.tpa_client.get_remote_id.return_value = 'fake-remote-id'
         self.addCleanup(tpa_client_mock.stop)
         self.exporter = config.get_learner_data_exporter('dummy-user')
-        assert isinstance(self.exporter, BaseLearnerExporter)
-        super(TestBaseLearnerExporter, self).setUp()
+        assert isinstance(self.exporter, LearnerExporter)
+        super(TestLearnerExporter, self).setUp()
 
     def test_collect_learner_data_no_enrollments(self):
-        learner_data = list(self.exporter.collect_learner_data())
+        learner_data = list(self.exporter.export())
         assert not learner_data
 
     @mock.patch('enterprise.models.EnrollmentApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.GradesApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.GradesApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CourseApiClient')
     def test_collect_learner_data_without_consent(self, mock_course_api, mock_grades_api, mock_enrollment_api):
         EnterpriseCourseEnrollmentFactory(
             enterprise_customer_user=self.enterprise_customer_user,
@@ -100,11 +100,11 @@ class TestBaseLearnerExporter(unittest.TestCase):
             mode="verified"
         )
 
-        learner_data = list(self.exporter.collect_learner_data())
+        learner_data = list(self.exporter.export())
         assert not learner_data
         assert mock_grades_api.call_count == 0
 
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CourseApiClient')
     def test_collect_learner_data_no_course_details(self, mock_course_api):
         EnterpriseCourseEnrollmentFactory(
             enterprise_customer_user=self.enterprise_customer_user,
@@ -114,12 +114,12 @@ class TestBaseLearnerExporter(unittest.TestCase):
         # Return no course details
         mock_course_api.return_value.get_course_details.return_value = None
 
-        learner_data = list(self.exporter.collect_learner_data())
+        learner_data = list(self.exporter.export())
         assert not learner_data
 
     @mock.patch('enterprise.models.EnrollmentApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CertificatesApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CourseApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CertificatesApiClient')
     def test_learner_data_instructor_paced_no_certificate(
             self, mock_certificate_api, mock_course_api, mock_enrollment_api
     ):
@@ -141,7 +141,7 @@ class TestBaseLearnerExporter(unittest.TestCase):
             mode="verified"
         )
 
-        learner_data = list(self.exporter.collect_learner_data())
+        learner_data = list(self.exporter.export())
         assert len(learner_data) == 1
 
         report = learner_data[0]
@@ -149,11 +149,11 @@ class TestBaseLearnerExporter(unittest.TestCase):
         assert report.course_id == self.course_id
         assert not report.course_completed
         assert report.completed_timestamp is None
-        assert report.grade == BaseLearnerExporter.GRADE_INCOMPLETE
+        assert report.grade == LearnerExporter.GRADE_INCOMPLETE
 
     @mock.patch('enterprise.models.EnrollmentApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CertificatesApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CourseApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CertificatesApiClient')
     def test_learner_data_instructor_paced_no_certificate_null_sso_id(
             self, mock_certificate_api, mock_course_api, mock_enrollment_api
     ):
@@ -177,12 +177,12 @@ class TestBaseLearnerExporter(unittest.TestCase):
             mode="verified"
         )
 
-        learner_data = list(self.exporter.collect_learner_data())
+        learner_data = list(self.exporter.export())
         assert not learner_data
 
     @mock.patch('enterprise.models.EnrollmentApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CertificatesApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CourseApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CertificatesApiClient')
     def test_learner_data_instructor_paced_with_certificate(
             self, mock_certificate_api, mock_course_api, mock_enrollment_api
     ):
@@ -213,7 +213,7 @@ class TestBaseLearnerExporter(unittest.TestCase):
             mode="verified"
         )
 
-        learner_data = list(self.exporter.collect_learner_data())
+        learner_data = list(self.exporter.export())
         assert len(learner_data) == 1
 
         report = learner_data[0]
@@ -221,11 +221,11 @@ class TestBaseLearnerExporter(unittest.TestCase):
         assert report.course_id == self.course_id
         assert report.course_completed
         assert report.completed_timestamp == self.NOW_TIMESTAMP
-        assert report.grade == BaseLearnerExporter.GRADE_PASSING
+        assert report.grade == LearnerExporter.GRADE_PASSING
 
     @mock.patch('enterprise.models.EnrollmentApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.GradesApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.GradesApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CourseApiClient')
     def test_learner_data_self_paced_no_grades(self, mock_course_api, mock_grades_api, mock_enrollment_api):
         enrollment = EnterpriseCourseEnrollmentFactory(
             enterprise_customer_user=self.enterprise_customer_user,
@@ -245,7 +245,7 @@ class TestBaseLearnerExporter(unittest.TestCase):
             mode="verified"
         )
 
-        learner_data = list(self.exporter.collect_learner_data())
+        learner_data = list(self.exporter.export())
         assert len(learner_data) == 1
 
         report = learner_data[0]
@@ -257,22 +257,22 @@ class TestBaseLearnerExporter(unittest.TestCase):
 
     @ddt.data(
         # passing grade with no course end date
-        (True, None, NOW_TIMESTAMP, BaseLearnerExporter.GRADE_PASSING),
+        (True, None, NOW_TIMESTAMP, LearnerExporter.GRADE_PASSING),
         # passing grade with course end date in past
-        (True, YESTERDAY, YESTERDAY_TIMESTAMP, BaseLearnerExporter.GRADE_PASSING),
+        (True, YESTERDAY, YESTERDAY_TIMESTAMP, LearnerExporter.GRADE_PASSING),
         # passing grade with course end date in future
-        (True, TOMORROW, NOW_TIMESTAMP, BaseLearnerExporter.GRADE_PASSING),
+        (True, TOMORROW, NOW_TIMESTAMP, LearnerExporter.GRADE_PASSING),
         # non-passing grade with no course end date
-        (False, None, None, BaseLearnerExporter.GRADE_INCOMPLETE),
+        (False, None, None, LearnerExporter.GRADE_INCOMPLETE),
         # non-passing grade with course end date in past
-        (False, YESTERDAY, YESTERDAY_TIMESTAMP, BaseLearnerExporter.GRADE_FAILING),
+        (False, YESTERDAY, YESTERDAY_TIMESTAMP, LearnerExporter.GRADE_FAILING),
         # non-passing grade with course end date in future
-        (False, TOMORROW, None, BaseLearnerExporter.GRADE_INCOMPLETE),
+        (False, TOMORROW, None, LearnerExporter.GRADE_INCOMPLETE),
     )
     @ddt.unpack
     @mock.patch('enterprise.models.EnrollmentApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.GradesApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.GradesApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CourseApiClient')
     def test_learner_data_self_paced_course(self, passing, end_date, expected_completion, expected_grade,
                                             mock_course_api, mock_grades_api, mock_enrollment_api):
         enrollment = EnterpriseCourseEnrollmentFactory(
@@ -298,7 +298,7 @@ class TestBaseLearnerExporter(unittest.TestCase):
 
         # Collect the learner data, with time set to NOW
         with freeze_time(self.NOW):
-            learner_data = list(self.exporter.collect_learner_data())
+            learner_data = list(self.exporter.export())
 
         assert len(learner_data) == 1
 
@@ -310,14 +310,14 @@ class TestBaseLearnerExporter(unittest.TestCase):
         assert report.grade == expected_grade
 
     @ddt.data(
-        ('self', BaseLearnerExporter.GRADE_PASSING),
-        ('instructor', BaseLearnerExporter.GRADE_PASSING),
+        ('self', LearnerExporter.GRADE_PASSING),
+        ('instructor', LearnerExporter.GRADE_PASSING),
     )
     @ddt.unpack
     @mock.patch('enterprise.models.EnrollmentApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CertificatesApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.GradesApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CertificatesApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.GradesApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CourseApiClient')
     def test_learner_data_multiple_courses(
             self, pacing, grade, mock_course_api, mock_grades_api, mock_certificate_api, mock_enrollment_api
     ):
@@ -394,7 +394,7 @@ class TestBaseLearnerExporter(unittest.TestCase):
 
         # Collect the learner data, with time set to NOW
         with freeze_time(self.NOW):
-            learner_data = list(self.exporter.collect_learner_data())
+            learner_data = list(self.exporter.export())
 
         assert len(learner_data) == 3
 
@@ -403,14 +403,14 @@ class TestBaseLearnerExporter(unittest.TestCase):
         assert report1.course_id == self.course_id
         assert not report1.course_completed
         assert report1.completed_timestamp is None
-        assert report1.grade == BaseLearnerExporter.GRADE_INCOMPLETE
+        assert report1.grade == LearnerExporter.GRADE_INCOMPLETE
 
         report2 = learner_data[1]
         assert report2.enterprise_course_enrollment_id == enrollment3.id
         assert report2.course_id == self.course_id
         assert not report2.course_completed
         assert report2.completed_timestamp is None
-        assert report2.grade == BaseLearnerExporter.GRADE_INCOMPLETE
+        assert report2.grade == LearnerExporter.GRADE_INCOMPLETE
 
         report3 = learner_data[2]
         assert report3.enterprise_course_enrollment_id == enrollment2.id
@@ -431,8 +431,8 @@ class TestBaseLearnerExporter(unittest.TestCase):
     )
     @ddt.unpack
     @mock.patch('enterprise.models.EnrollmentApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.GradesApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.GradesApiClient')
+    @mock.patch('integrated_channels.integrated_channel.exporters.learner_data.CourseApiClient')
     def test_learner_data_audit_data_reporting(
             self,
             enable_audit_enrollment,
@@ -471,7 +471,7 @@ class TestBaseLearnerExporter(unittest.TestCase):
 
         # Collect the learner data
         with freeze_time(self.NOW):
-            learner_data = list(self.exporter.collect_learner_data())
+            learner_data = list(self.exporter.export())
 
         assert len(learner_data) == expected_data_len
 
@@ -480,4 +480,4 @@ class TestBaseLearnerExporter(unittest.TestCase):
             assert report.enterprise_course_enrollment_id == enrollment.id
             assert report.course_id == self.course_id
             assert report.course_completed
-            assert report.grade == BaseLearnerExporter.GRADE_PASSING
+            assert report.grade == LearnerExporter.GRADE_PASSING

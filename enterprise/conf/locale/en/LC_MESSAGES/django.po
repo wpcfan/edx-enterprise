@@ -1177,24 +1177,24 @@ msgid_plural "{count} Courses"
 msgstr[0] ""
 msgstr[1] ""
 
-#: integrated_channels/integrated_channel/management/commands/__init__.py:49
+#: integrated_channels/integrated_channel/management/commands/__init__.py:51
 msgid ""
 "Transmit data for only this EnterpriseCustomer. Omit this option to transmit "
 "to all EnterpriseCustomers with active integrated channels."
 msgstr ""
 
-#: integrated_channels/integrated_channel/management/commands/__init__.py:57
+#: integrated_channels/integrated_channel/management/commands/__init__.py:59
 msgid ""
 "Transmit data to this IntegrateChannel. Omit this option to transmit to all "
 "configured, active integrated channels."
 msgstr ""
 
-#: integrated_channels/integrated_channel/management/commands/__init__.py:75
+#: integrated_channels/integrated_channel/management/commands/__init__.py:107
 #, python-brace-format
 msgid "Enterprise customer {uuid} not found, or not active"
 msgstr ""
 
-#: integrated_channels/integrated_channel/management/commands/__init__.py:91
+#: integrated_channels/integrated_channel/management/commands/__init__.py:123
 #, python-brace-format
 msgid "Invalid integrated channel: {channel}"
 msgstr ""

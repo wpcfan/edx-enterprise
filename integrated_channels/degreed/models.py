@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Database models for Enterprise Integrated Channel SAP SuccessFactors.
+Database models for Enterprise Integrated Channel Degreed.
 """
 
 from __future__ import absolute_import, unicode_literals
@@ -9,11 +9,11 @@ import json
 from logging import getLogger
 
 from config_models.models import ConfigurationModel
+from integrated_channels.degreed.exporters.course_metadata import DegreedCourseExporter
+from integrated_channels.degreed.exporters.learner_data import DegreedLearnerExporter
+from integrated_channels.degreed.transmitters.course_metadata import DegreedCourseTransmitter
+from integrated_channels.degreed.transmitters.learner_data import DegreedLearnerTransmitter
 from integrated_channels.integrated_channel.models import EnterpriseCustomerPluginConfiguration
-from integrated_channels.sap_success_factors.exporters.course_metadata import SapSuccessFactorsCourseExporter
-from integrated_channels.sap_success_factors.exporters.learner_data import SapSuccessFactorsLearnerExporter
-from integrated_channels.sap_success_factors.transmitters.course_metadata import SapSuccessFactorsCourseTransmitter
-from integrated_channels.sap_success_factors.transmitters.learner_data import SapSuccessFactorsLearnerTransmitter
 from simple_history.models import HistoricalRecords
 
 from django.db import models
@@ -23,9 +23,9 @@ LOGGER = getLogger(__name__)
 
 
 @python_2_unicode_compatible
-class SAPSuccessFactorsGlobalConfiguration(ConfigurationModel):
+class DegreedGlobalConfiguration(ConfigurationModel):
     """
-    The global configuration for integrating with SuccessFactors.
+    The global configuration for integrating with Degreed.
     """
 
     completion_status_api_path = models.CharField(max_length=255)
@@ -34,13 +34,13 @@ class SAPSuccessFactorsGlobalConfiguration(ConfigurationModel):
     provider_id = models.CharField(max_length=100, default='EDX')
 
     class Meta:
-        app_label = 'sap_success_factors'
+        app_label = 'degreed'
 
     def __str__(self):
         """
         Return a human-readable string representation of the object.
         """
-        return "<SAPSuccessFactorsGlobalConfiguration with id {id}>".format(id=self.id)
+        return "<DegreedGlobalConfiguration with id {id}>".format(id=self.id)
 
     def __repr__(self):
         """
@@ -50,9 +50,9 @@ class SAPSuccessFactorsGlobalConfiguration(ConfigurationModel):
 
 
 @python_2_unicode_compatible
-class SAPSuccessFactorsEnterpriseCustomerConfiguration(EnterpriseCustomerPluginConfiguration):
+class DegreedEnterpriseCustomerConfiguration(EnterpriseCustomerPluginConfiguration):
     """
-    The Enterprise specific configuration we need for integrating with SuccessFactors.
+    The Enterprise specific configuration we need for integrating with Degreed.
     """
 
     USER_TYPE_USER = 'user'
@@ -64,28 +64,28 @@ class SAPSuccessFactorsEnterpriseCustomerConfiguration(EnterpriseCustomerPluginC
     )
 
     key = models.CharField(max_length=255, blank=True, verbose_name="Client ID")
-    sapsf_base_url = models.CharField(max_length=255, verbose_name="SAP Base URL")
-    sapsf_company_id = models.CharField(max_length=255, blank=True, verbose_name="SAP Company ID")
-    sapsf_user_id = models.CharField(max_length=255, blank=True, verbose_name="SAP User ID")
+    degreed_base_url = models.CharField(max_length=255, verbose_name="Degreed Base URL")
+    degreed_company_id = models.CharField(max_length=255, blank=True, verbose_name="Degreed Company ID")
+    degreed_user_id = models.CharField(max_length=255, blank=True, verbose_name="Degreed User ID")
     secret = models.CharField(max_length=255, blank=True, verbose_name="Client Secret")
     user_type = models.CharField(
         max_length=20,
         choices=USER_TYPE_CHOICES,
         blank=False,
         default=USER_TYPE_USER,
-        verbose_name="SAP User Type"
+        verbose_name="Degreed User Type"
     )
 
     history = HistoricalRecords()
 
     class Meta:
-        app_label = 'sap_success_factors'
+        app_label = 'degreed'
 
     def __str__(self):
         """
         Return human-readable string representation.
         """
-        return "<SAPSuccessFactorsEnterpriseCustomerConfiguration for Enterprise {enterprise_name}>".format(
+        return "<DegreedEnterpriseCustomerConfiguration for Enterprise {enterprise_name}>".format(
             enterprise_name=self.enterprise_customer.name
         )
 
@@ -100,47 +100,47 @@ class SAPSuccessFactorsEnterpriseCustomerConfiguration(EnterpriseCustomerPluginC
         """
         Returns an capitalized identifier for this channel class, unique among subclasses.
         """
-        return 'SAP'
+        return 'Degreed'
 
     @property
     def provider_id(self):
         '''
         Fetch ``provider_id`` from global configuration settings
         '''
-        return SAPSuccessFactorsGlobalConfiguration.current().provider_id
+        return DegreedGlobalConfiguration.current().provider_id
 
     def get_learner_data_transmitter(self):
         """
-        Return a ``SapSuccessFactorsLearnerTransmitter`` instance.
+        Return a ``DegreedLearnerTransmitter`` instance.
         """
-        return SapSuccessFactorsLearnerTransmitter(self)
+        return DegreedLearnerTransmitter(self)
 
     def get_learner_data_exporter(self, user):
         """
-        Return a ``SapSuccessFactorsLearnerDataExporter`` instance.
+        Return a ``DegreedLearnerDataExporter`` instance.
         """
-        return SapSuccessFactorsLearnerExporter(user, self)
+        return DegreedLearnerExporter(user, self)
 
     def get_course_data_transmitter(self):
         """
-        Return a ``SapSuccessFactorsCourseTransmitter`` instance.
+        Return a ``DegreedCourseTransmitter`` instance.
         """
-        return SapSuccessFactorsCourseTransmitter(self)
+        return DegreedCourseTransmitter(self)
 
     def get_course_data_exporter(self, user):
         """
-        Return a ``SapSuccessFactorsCourseExporter`` instance.
+        Return a ``DegreedCourseExporter`` instance.
         """
-        return SapSuccessFactorsCourseExporter(user, self)
+        return DegreedCourseExporter(user, self)
 
 
 @python_2_unicode_compatible
-class SapSuccessFactorsLearnerDataTransmissionAudit(models.Model):
+class DegreedLearnerDataTransmissionAudit(models.Model):
     """
-    The payload we sent to SuccessFactors at a given point in time for an enterprise course enrollment.
+    The payload we sent to Degreed at a given point in time for an enterprise course enrollment.
     """
 
-    sapsf_user_id = models.CharField(max_length=255, blank=False, null=False)
+    degreed_user_id = models.CharField(max_length=255, blank=False, null=False)
     enterprise_course_enrollment_id = models.PositiveIntegerField(blank=False, null=False)
     course_id = models.CharField(max_length=255, blank=False, null=False)
     course_completed = models.BooleanField(default=True)
@@ -152,18 +152,18 @@ class SapSuccessFactorsLearnerDataTransmissionAudit(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        app_label = 'sap_success_factors'
+        app_label = 'degreed'
 
     def __str__(self):
         """
         Return a human-readable string representation of the object.
         """
         return (
-            '<SapSuccessFactorsLearnerDataTransmissionAudit {transmission_id} for enterprise enrollment {enrollment}, '
-            'SAPSF user {sapsf_user_id}, and course {course_id}>'.format(
+            '<DegreedLearnerDataTransmissionAudit {transmission_id} for enterprise enrollment {enrollment}, '
+            'Degreed user {degreed_user_id}, and course {course_id}>'.format(
                 transmission_id=self.id,
                 enrollment=self.enterprise_course_enrollment_id,
-                sapsf_user_id=self.sapsf_user_id,
+                degreed_user_id=self.degreed_user_id,
                 course_id=self.course_id
             )
         )
@@ -179,7 +179,7 @@ class SapSuccessFactorsLearnerDataTransmissionAudit(models.Model):
         """
         Fetch ``provider_id`` from global configuration settings
         """
-        return SAPSuccessFactorsGlobalConfiguration.current().provider_id
+        return DegreedGlobalConfiguration.current().provider_id
 
     def serialize(self):
         """
@@ -191,10 +191,10 @@ class SapSuccessFactorsLearnerDataTransmissionAudit(models.Model):
 
     def _payload_data(self):
         """
-        Convert the audit record's fields into SAP SuccessFactors key/value pairs.
+        Convert the audit record's fields into Degreed key/value pairs.
         """
         return dict(
-            userID=self.sapsf_user_id,
+            userID=self.degreed_user_id,
             courseID=self.course_id,
             providerID=self.provider_id,
             courseCompleted="true" if self.course_completed else "false",

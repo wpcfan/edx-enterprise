@@ -13,7 +13,7 @@ import mock
 import responses
 from faker import Factory as FakerFactory
 from freezegun import freeze_time
-from integrated_channels.integrated_channel.learner_data import BaseLearnerExporter
+from integrated_channels.integrated_channel.exporters.learner_data import LearnerExporter
 from integrated_channels.sap_success_factors.models import SAPSuccessFactorsEnterpriseCustomerConfiguration
 from pytest import mark, raises
 from requests.compat import urljoin
@@ -25,15 +25,7 @@ from django.core.management.base import CommandError
 from django.utils import timezone
 
 from enterprise.api_client import lms as lms_api
-from test_utils.factories import (
-    DataSharingConsentFactory,
-    EnterpriseCourseEnrollmentFactory,
-    EnterpriseCustomerCatalogFactory,
-    EnterpriseCustomerFactory,
-    EnterpriseCustomerIdentityProviderFactory,
-    EnterpriseCustomerUserFactory,
-    UserFactory,
-)
+from test_utils import factories
 from test_utils.fake_catalog_api import CourseDiscoveryApiTestMixin
 from test_utils.fake_enterprise_api import EnterpriseMockMixin
 
@@ -43,14 +35,14 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
     """
     Test the transmit_courseware_data management command.
     """
-    def setUp(self):
 
-        self.user = UserFactory(username='C-3PO')
-        self.enterprise_customer = EnterpriseCustomerFactory(
+    def setUp(self):
+        self.user = factories.UserFactory(username='C-3PO')
+        self.enterprise_customer = factories.EnterpriseCustomerFactory(
             catalog=1,
             name='Veridian Dynamics',
         )
-        self.integrated_channel = SAPSuccessFactorsEnterpriseCustomerConfiguration.objects.create(
+        self.sapsf = factories.SAPSuccessFactorsEnterpriseCustomerConfigurationFactory(
             enterprise_customer=self.enterprise_customer,
             sapsf_base_url='http://enterprise.successfactors.com/',
             key='key',
@@ -58,7 +50,6 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
             active=True,
         )
         self.catalog_api_config_mock = self._make_patch(self._make_catalog_api_location("CatalogIntegration"))
-
         super(TestTransmitCoursewareDataManagementCommand, self).setUp()
 
     def test_enterprise_customer_not_found(self):
@@ -90,11 +81,13 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
 
     @responses.activate
     @mock.patch('enterprise.api_client.lms.JwtBuilder', mock.Mock())
-    @mock.patch('integrated_channels.sap_success_factors.utils.reverse')
-    @mock.patch('integrated_channels.sap_success_factors.transmitters.SAPSuccessFactorsAPIClient')
+    @mock.patch('integrated_channels.sap_success_factors.exporters.course_metadata.reverse')
+    @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.get_oauth_access_token')
+    @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.send_course_import')
     def test_transmit_courseware_task_with_error(
             self,
-            fake_sap_client,
+            send_course_import_mock,
+            get_oauth_access_token_mock,
             track_selection_reverse_mock,
     ):
         """
@@ -104,25 +97,23 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         courses metadata related to other integrated channels even if an
         integrated channel fails to transmit due to some error.
         """
-        fake_sap_client.get_oauth_access_token.return_value = "token", datetime.utcnow()
-        fake_sap_client.return_value.send_course_import.return_value = 200, '{}'
+        get_oauth_access_token_mock.return_value = "token", datetime.utcnow()
+        send_course_import_mock.return_value = 200, '{}'
         track_selection_reverse_mock.return_value = '/course_modes/choose/course-v1:edX+DemoX+Demo_Course/'
 
         # Mock first integrated channel with failure
         enterprise_uuid_for_failure = str(self.enterprise_customer.uuid)
-        self.mock_ent_courses_api_with_error(
-            enterprise_uuid=enterprise_uuid_for_failure
-        )
+        self.mock_ent_courses_api_with_error(enterprise_uuid=enterprise_uuid_for_failure)
 
         # Now create a new integrated channel with a new enterprise and mock
         # enterprise courses API to send failure response
         course_run_id_for_success = 'course-v1:edX+DemoX+Demo_Course_1'
-        dummy_enterprise_customer = EnterpriseCustomerFactory(
+        dummy_enterprise_customer = factories.EnterpriseCustomerFactory(
             catalog=1,
             name='Dummy Enterprise',
         )
         enterprise_uuid_for_success = str(dummy_enterprise_customer.uuid)
-        SAPSuccessFactorsEnterpriseCustomerConfiguration.objects.create(
+        factories.SAPSuccessFactorsEnterpriseCustomerConfigurationFactory(
             enterprise_customer=dummy_enterprise_customer,
             sapsf_base_url='http://enterprise.successfactors.com/',
             key='key',
@@ -169,18 +160,20 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
 
     @responses.activate
     @mock.patch('enterprise.api_client.lms.JwtBuilder', mock.Mock())
-    @mock.patch('integrated_channels.sap_success_factors.utils.reverse')
-    @mock.patch('integrated_channels.sap_success_factors.transmitters.SAPSuccessFactorsAPIClient')
+    @mock.patch('integrated_channels.sap_success_factors.exporters.course_metadata.reverse')
+    @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.get_oauth_access_token')
+    @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.send_course_import')
     def test_transmit_courseware_task_success(
             self,
-            fake_sap_client,
-            track_selection_reverse_mock,
+            send_course_import_mock,
+            get_oauth_access_token_mock,
+            track_selection_reverse_mock
     ):
         """
         Test the data transmission task.
         """
-        fake_sap_client.get_oauth_access_token.return_value = "token", datetime.utcnow()
-        fake_sap_client.return_value.send_course_import.return_value = 200, '{}'
+        get_oauth_access_token_mock.return_value = "token", datetime.utcnow()
+        send_course_import_mock.return_value = 200, '{}'
 
         track_selection_reverse_mock.return_value = '/course_modes/choose/course-v1:edX+DemoX+Demo_Course/'
         uuid = str(self.enterprise_customer.uuid)
@@ -190,7 +183,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
             course_run_ids=course_run_ids[:1]
         )
 
-        EnterpriseCustomerCatalogFactory(enterprise_customer=self.enterprise_customer)
+        factories.EnterpriseCustomerCatalogFactory(enterprise_customer=self.enterprise_customer)
         enterprise_catalog_uuid = str(self.enterprise_customer.enterprise_customer_catalogs.first().uuid)
         self.mock_enterprise_customer_catalogs(
             uuid, enterprise_catalog_uuid, course_run_ids[1:]
@@ -238,8 +231,8 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         """
         Test the data transmission task without any integrated channel.
         """
-        user = UserFactory(username='john_doe')
-        EnterpriseCustomerFactory(
+        user = factories.UserFactory(username='john_doe')
+        factories.EnterpriseCustomerFactory(
             catalog=1,
             name='Veridian Dynamics',
         )
@@ -264,7 +257,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
             enterprise_uuid=uuid,
             course_run_ids=course_run_ids
         )
-        integrated_channel_enterprise = self.integrated_channel.enterprise_customer
+        integrated_channel_enterprise = self.sapsf.enterprise_customer
         integrated_channel_enterprise.catalog = None
         integrated_channel_enterprise.save()
 
@@ -305,14 +298,14 @@ MOCK_FAILING_CERTIFICATE = dict(
 CERTIFICATE_PASSING_COMPLETION = dict(
     completed='true',
     timestamp=NOW_TIMESTAMP,
-    grade=BaseLearnerExporter.GRADE_PASSING,
+    grade=LearnerExporter.GRADE_PASSING,
 )
 
 # Expected learner completion data from the mock failing certificate
 CERTIFICATE_FAILING_COMPLETION = dict(
     completed='false',
     timestamp=NOW_TIMESTAMP,
-    grade=BaseLearnerExporter.GRADE_FAILING,
+    grade=LearnerExporter.GRADE_FAILING,
 )
 
 
@@ -321,34 +314,36 @@ class TestTransmitLearnerData(unittest.TestCase):
     """
     Test the transmit_learner_data management command.
     """
+
     def setUp(self):
-        self.api_user = UserFactory(username='staff_user', id=1)
-        self.user = UserFactory(id=2)
+        self.api_user = factories.UserFactory(username='staff_user', id=1)
+        self.user = factories.UserFactory(id=2)
         self.course_id = COURSE_ID
-        self.enterprise_customer = EnterpriseCustomerFactory()
+        self.enterprise_customer = factories.EnterpriseCustomerFactory()
         self.identity_provider = FakerFactory.create().slug()  # pylint: disable=no-member
-        EnterpriseCustomerIdentityProviderFactory(provider_id=self.identity_provider,
-                                                  enterprise_customer=self.enterprise_customer)
-        self.enterprise_customer_user = EnterpriseCustomerUserFactory(
+        factories.EnterpriseCustomerIdentityProviderFactory(
+            provider_id=self.identity_provider,
+            enterprise_customer=self.enterprise_customer
+        )
+        self.enterprise_customer_user = factories.EnterpriseCustomerUserFactory(
             user_id=self.user.id,
             enterprise_customer=self.enterprise_customer,
         )
-        self.enrollment = EnterpriseCourseEnrollmentFactory(
+        self.enrollment = factories.EnterpriseCourseEnrollmentFactory(
             enterprise_customer_user=self.enterprise_customer_user,
             course_id=self.course_id,
         )
-        self.consent = DataSharingConsentFactory(
+        self.consent = factories.DataSharingConsentFactory(
             username=self.user.username,
             course_id=self.course_id,
             enterprise_customer=self.enterprise_customer
         )
-        self.integrated_channel = SAPSuccessFactorsEnterpriseCustomerConfiguration(
+        self.sapsf = factories.SAPSuccessFactorsEnterpriseCustomerConfigurationFactory(
             enterprise_customer=self.enterprise_customer,
-            sapsf_base_url='enterprise.successfactors.com',
+            sapsf_base_url='http://enterprise.successfactors.com/',
             key='key',
             secret='secret',
         )
-
         super(TestTransmitLearnerData, self).setUp()
 
     def test_api_user_required(self):
@@ -391,8 +386,8 @@ def transmit_learner_data_context(command_kwargs, certificate, self_paced, end_d
     testcase.setUp()
 
     # Activate the integrated channel
-    testcase.integrated_channel.active = True
-    testcase.integrated_channel.save()
+    testcase.sapsf.active = True
+    testcase.sapsf.save()
 
     # Stub out the APIs called by the transmit_learner_data command
     stub_transmit_learner_data_apis(testcase, certificate, self_paced, end_date, passed)
@@ -544,7 +539,19 @@ def get_expected_output(**expected_completion):
     (dict(), None, True, PAST, False, dict(completed='false', timestamp=PAST_TIMESTAMP, grade='Fail')),
     (dict(), None, True, PAST, True, dict(completed='true', timestamp=PAST_TIMESTAMP, grade='Pass')),
 ])
-def test_transmit_learner_data(caplog, command_kwargs, certificate, self_paced, end_date, passed, expected_completion):
+@mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.get_oauth_access_token')
+@mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.send_completion_status')
+def test_transmit_learner_data(
+        send_completion_status,
+        get_oauth_access_token_mock,
+        caplog,
+        command_kwargs,
+        certificate,
+        self_paced,
+        end_date,
+        passed,
+        expected_completion
+):
     """
     Test the log output from a successful run of the transmit_learner_data management command,
     using all the ways we can invoke it.
@@ -553,12 +560,10 @@ def test_transmit_learner_data(caplog, command_kwargs, certificate, self_paced, 
 
     # Mock the Open edX environment classes
     with transmit_learner_data_context(command_kwargs, certificate, self_paced, end_date, passed) as (args, kwargs):
-        with mock.patch('integrated_channels.sap_success_factors.transmitters.SAPSuccessFactorsAPIClient') \
-                as mock_client:
-            mock_client.get_oauth_access_token.return_value = "token", datetime.utcnow()
-            mock_client.return_value.send_completion_status.return_value = 200, '{}'
-            # Call the management command
-            call_command('transmit_learner_data', *args, **kwargs)
+        get_oauth_access_token_mock.return_value = "token", datetime.utcnow()
+        send_completion_status.return_value = 200, '{}'
+        # Call the management command
+        call_command('transmit_learner_data', *args, **kwargs)
 
     # Ensure the correct learner_data record was logged
     assert len(caplog.records) == 1

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Class for transmitting learner data to SuccessFactors.
+Class for transmitting learner data to Degreed.
 """
 
 from __future__ import absolute_import, unicode_literals
 
 import logging
 
+from integrated_channels.degreed.client import DegreedAPIClient
 from integrated_channels.integrated_channel.transmitters.learner_data import LearnerTransmitter
-from integrated_channels.sap_success_factors.client import SAPSuccessFactorsAPIClient
 from requests import RequestException
 
 from django.apps import apps
@@ -16,31 +16,31 @@ from django.apps import apps
 LOGGER = logging.getLogger(__name__)
 
 
-class SapSuccessFactorsLearnerTransmitter(LearnerTransmitter):
+class DegreedLearnerTransmitter(LearnerTransmitter):
     """
     This endpoint is intended to receive learner data routed from the integrated_channel app that is ready to be
-    sent to SuccessFactors.
+    sent to Degreed.
     """
 
-    def __init__(self, enterprise_configuration, client=SAPSuccessFactorsAPIClient):
+    def __init__(self, enterprise_configuration, client=DegreedAPIClient):
         """
-        Ensure that, by default, the client used for SAPSF Learner Data transmission is ``SAPSuccessFactorsAPIClient``.
+        Ensure that, by default, the client used for Degreed Learner Data transmission is ``DegreedAPIClient``.
         """
-        super(SapSuccessFactorsLearnerTransmitter, self).__init__(
+        super(DegreedLearnerTransmitter, self).__init__(
             enterprise_configuration=enterprise_configuration,
             client=client
         )
 
     def transmit(self, payload):
         """
-        Send a completion status call to SAP SuccessFactors using the client.
+        Send a completion status call to Degreed using the client.
 
         Args:
-            payload: The learner completion data payload to send to SAP SuccessFactors
+            payload: The learner completion data payload to send to Degreed
         """
-        SapSuccessFactorsLearnerDataTransmissionAudit = apps.get_model(  # pylint: disable=invalid-name
-            app_label='sap_success_factors',
-            model_name='SapSuccessFactorsLearnerDataTransmissionAudit'
+        DegreedLearnerDataTransmissionAudit = apps.get_model(  # pylint: disable=invalid-name
+            app_label='degreed',
+            model_name='DegreedLearnerDataTransmissionAudit'
         )
         for learner_data in payload.export():
             serialized_payload = learner_data.serialize()
@@ -52,7 +52,7 @@ class SapSuccessFactorsLearnerTransmitter(LearnerTransmitter):
                 LOGGER.debug('Skipping in progress enterprise enrollment {}'.format(enterprise_enrollment_id))
                 return None
 
-            previous_transmissions = SapSuccessFactorsLearnerDataTransmissionAudit.objects.filter(
+            previous_transmissions = DegreedLearnerDataTransmissionAudit.objects.filter(
                 enterprise_course_enrollment_id=enterprise_enrollment_id,
                 error_message=''
             )
@@ -62,7 +62,7 @@ class SapSuccessFactorsLearnerTransmitter(LearnerTransmitter):
                 return None
 
             try:
-                code, body = self.client.send_completion_status(learner_data.sapsf_user_id, serialized_payload)
+                code, body = self.client.send_completion_status(learner_data.degreed_user_id, serialized_payload)
                 LOGGER.debug('Successfully sent completion status call for enterprise enrollment {} with payload {}'.
                              format(enterprise_enrollment_id, serialized_payload))
             except RequestException as request_exception:

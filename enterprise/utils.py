@@ -419,21 +419,6 @@ def update_query_parameters(url, query_parameters):
     )
 
 
-def safe_extract_key(data, key, default=''):
-    """
-    Safely extract the key, if it does not exist or is None, return the default.
-
-    Arguments:
-        data (dict): The dictionary from which to extract the key's value.
-        key (str): The key for which we need to extract the value from data.
-        default: The value to return if the key is not present in data.
-
-    """
-    if key in data and data[key] is not None:
-        return data[key]
-    return default
-
-
 def filter_audit_course_modes(enterprise_customer, course_modes):
     """
     Filter audit course modes out if the enterprise customer has not enabled the 'Enable audit enrollment' flag.
