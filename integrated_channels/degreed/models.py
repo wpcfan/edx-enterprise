@@ -55,26 +55,12 @@ class DegreedEnterpriseCustomerConfiguration(EnterpriseCustomerPluginConfigurati
     The Enterprise specific configuration we need for integrating with Degreed.
     """
 
-    USER_TYPE_USER = 'user'
-    USER_TYPE_ADMIN = 'admin'
-
-    USER_TYPE_CHOICES = (
-        (USER_TYPE_USER, 'User'),
-        (USER_TYPE_ADMIN, 'Admin'),
-    )
-
     key = models.CharField(max_length=255, blank=True, verbose_name="Client ID")
-    degreed_base_url = models.CharField(max_length=255, verbose_name="Degreed Base URL")
-    degreed_company_id = models.CharField(max_length=255, blank=True, verbose_name="Degreed Company ID")
-    degreed_user_id = models.CharField(max_length=255, blank=True, verbose_name="Degreed User ID")
     secret = models.CharField(max_length=255, blank=True, verbose_name="Client Secret")
-    user_type = models.CharField(
-        max_length=20,
-        choices=USER_TYPE_CHOICES,
-        blank=False,
-        default=USER_TYPE_USER,
-        verbose_name="Degreed User Type"
-    )
+    degreed_base_url = models.CharField(max_length=255, verbose_name="Degreed Base URL")
+    degreed_company_id = models.CharField(max_length=255, blank=True, verbose_name="Degreed Organization Code")
+    degreed_user_id = models.CharField(max_length=255, blank=True, verbose_name="Degreed User ID")
+    degreed_user_password = models.CharField(max_length=255, blank=True, verbose_name="Degreed User Password")
 
     history = HistoricalRecords()
 
