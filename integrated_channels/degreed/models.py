@@ -28,10 +28,59 @@ class DegreedGlobalConfiguration(ConfigurationModel):
     The global configuration for integrating with Degreed.
     """
 
-    completion_status_api_path = models.CharField(max_length=255)
-    course_api_path = models.CharField(max_length=255)
-    oauth_api_path = models.CharField(max_length=255)
-    provider_id = models.CharField(max_length=100, default='EDX')
+    degreed_base_url = models.CharField(
+        max_length=255,
+        verbose_name="Degreed Base URL",
+        help_text="The base URL used for API requests to Degreed, i.e. https://degreed.com."
+    )
+
+    completion_status_api_path = models.CharField(
+        max_length=255,
+        verbose_name="Completion Status API Path",
+        help_text="The API path for making completion POST/DELETE requests to Degreed."
+    )
+
+    course_api_path = models.CharField(
+        max_length=255,
+        verbose_name="Course Metadata API Path",
+        help_text="The API path for making course metadata POST/DELETE requests to Degreed."
+    )
+
+    oauth_api_path = models.CharField(
+        max_length=255,
+        verbose_name="OAuth API Path",
+        help_text=(
+            "The API path for making OAuth-related POST requests to Degreed. "
+            "This will be used to gain the OAuth access token which is required for other API calls."
+        )
+    )
+
+    degreed_user_id = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Degreed User ID",
+        help_text=(
+            "The Degreed User ID provided to the content provider by Degreed. "
+            "It is required for getting the OAuth access token."
+        )
+    )
+
+    degreed_user_password = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Degreed User Password",
+        help_text = (
+            "The Degreed User Password provided to the content provider by Degreed. "
+            "It is required for getting the OAuth access token."
+        )
+    )
+
+    provider_id = models.CharField(
+        max_length=100,
+        default='EDX',
+        verbose_name="Provider Code",
+        help_text="The provider code that Degreed gives to the content provider."
+    )
 
     class Meta:
         app_label = 'degreed'
@@ -55,12 +104,32 @@ class DegreedEnterpriseCustomerConfiguration(EnterpriseCustomerPluginConfigurati
     The Enterprise specific configuration we need for integrating with Degreed.
     """
 
-    key = models.CharField(max_length=255, blank=True, verbose_name="Client ID")
-    secret = models.CharField(max_length=255, blank=True, verbose_name="Client Secret")
-    degreed_base_url = models.CharField(max_length=255, verbose_name="Degreed Base URL")
-    degreed_company_id = models.CharField(max_length=255, blank=True, verbose_name="Degreed Organization Code")
-    degreed_user_id = models.CharField(max_length=255, blank=True, verbose_name="Degreed User ID")
-    degreed_user_password = models.CharField(max_length=255, blank=True, verbose_name="Degreed User Password")
+    key = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="API Client ID",
+        help_text=(
+            "The API Client ID provided to edX by the enterprise customer to be used to make API "
+            "calls to Degreed on behalf of the customer."
+        )
+    )
+
+    secret = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="API Client Secret",
+        help_text=(
+            "The API Client Secret provided to edX by the enterprise customer to be used to make API "
+            "calls to Degreed on behalf of the customer."
+        )
+    )
+
+    degreed_company_id = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Degreed Organization Code",
+        help_text="The organization code provided to the enterprise customer by Degreed."
+    )
 
     history = HistoricalRecords()
 
@@ -126,13 +195,33 @@ class DegreedLearnerDataTransmissionAudit(models.Model):
     The payload we sent to Degreed at a given point in time for an enterprise course enrollment.
     """
 
-    degreed_user_id = models.CharField(max_length=255, blank=False, null=False)
-    enterprise_course_enrollment_id = models.PositiveIntegerField(blank=False, null=False)
-    course_id = models.CharField(max_length=255, blank=False, null=False)
-    course_completed = models.BooleanField(default=True)
-    completed_timestamp = models.BigIntegerField()
-    instructor_name = models.CharField(max_length=255, blank=True)
-    grade = models.CharField(max_length=100, blank=False, null=False)
+    degreed_user_id = models.CharField(
+        max_length=255,
+        blank=False,
+        null=False
+    )
+
+    enterprise_course_enrollment_id = models.PositiveIntegerField(
+        blank=False,
+        null=False
+    )
+
+    course_id = models.CharField(
+        max_length=255,
+        blank=False,
+        null=False,
+        help_text="The course run's key which is used to uniquely identify the course for Degreed."
+    )
+
+    course_completed = models.BooleanField(
+        default=True,
+        help_text="The learner's course completion status transmitted to Degreed."
+    )
+
+    # The API docs say "DateTime?" -- we'll have to test this.
+    completed_timestamp = models.DateTimeField()
+
+    # Request-related information.
     status = models.CharField(max_length=100, blank=False, null=False)
     error_message = models.TextField(blank=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -160,13 +249,6 @@ class DegreedLearnerDataTransmissionAudit(models.Model):
         """
         return self.__str__()
 
-    @property
-    def provider_id(self):
-        """
-        Fetch ``provider_id`` from global configuration settings
-        """
-        return DegreedGlobalConfiguration.current().provider_id
-
     def serialize(self):
         """
         Return a JSON-serialized representation.
@@ -180,9 +262,9 @@ class DegreedLearnerDataTransmissionAudit(models.Model):
         Convert the audit record's fields into Degreed key/value pairs.
         """
         return dict(
-            userID=self.degreed_user_id,
-            courseID=self.course_id,
-            providerID=self.provider_id,
+            employeeId=self.degreed_user_id,
+            id=self.course_id,
+            orgCode=self.provider_id,
             courseCompleted="true" if self.course_completed else "false",
             completedTimestamp=self.completed_timestamp,
             grade=self.grade,

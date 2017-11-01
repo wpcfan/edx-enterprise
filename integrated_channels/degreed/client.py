@@ -2,6 +2,7 @@
 """
 Client for connecting to Degreed.
 """
+
 from __future__ import absolute_import, unicode_literals
 
 import datetime
@@ -22,7 +23,7 @@ class DegreedAPIClient(object):
 
     CONTENT_PROVIDER_SCOPE = 'provider_content'
     COMPLETION_PROVIDER_SCOPE = 'provider_completion'
-    SESSION_TIMEOUT = 5
+    SESSION_TIMEOUT = 60
 
     def __init__(self, enterprise_configuration):
         """
@@ -46,7 +47,7 @@ class DegreedAPIClient(object):
 
     def send_completion_status(self, payload):
         """
-        Send a completion status payload to the Degreed OCN Completion Status endpoint
+        Send a completion status payload to the Degreed Completion Status endpoint
 
         Args:
             degreed_user_id (str): The degreed user id that the completion status is being sent for.
@@ -58,12 +59,12 @@ class DegreedAPIClient(object):
         Raises:
             HTTPError: if we received a failure response code from Degreed
         """
-        url = self.enterprise_configuration.degreed_base_url + self.global_degreed_config.completion_status_api_path
+        url = self.global_degreed_config.degreed_base_url + self.global_degreed_config.completion_status_api_path
         return self._post(url, payload, self.COMPLETION_PROVIDER_SCOPE)
 
     def send_course_import(self, payload):
         """
-        Send courses payload to the Degreed OCN Course Import endpoint
+        Send courses payload to the Degreed Course Content endpoint
 
         Args:
             payload: JSON encoded object containing course import data per Degreed documentation.
@@ -73,7 +74,7 @@ class DegreedAPIClient(object):
         Raises:
             HTTPError: if we received a failure response code from Degreed
         """
-        url = self.enterprise_configuration.degreed_base_url + self.global_degreed_config.course_api_path
+        url = self.global_degreed_config.degreed_base_url + self.global_degreed_config.course_api_path
         return self._post(url, payload, self.CONTENT_PROVIDER_SCOPE)
 
     def _post(self, url, data, scope):
@@ -86,11 +87,11 @@ class DegreedAPIClient(object):
             scope (str): Must be one of
         """
         now = datetime.datetime.utcnow()
-        if now >= self.expires_at:
+        if now >= self.expires_at or self.session is None:
             # Create a new session with a valid token
             if self.session:
                 self.session.close()
-            self._create_session(scope=scope)
+            self._create_session(scope)
         response = self.session.post(url, data=data)
         return response.status_code, response.text
 
@@ -99,11 +100,10 @@ class DegreedAPIClient(object):
         Instantiate a new session object for use in connecting with Degreed
         """
         oauth_access_token, expires_at = self._get_oauth_access_token(
-            self.enterprise_configuration.degreed_base_url,
             self.enterprise_configuration.key,
             self.enterprise_configuration.secret,
-            self.enterprise_configuration.degreed_user_id,
-            self.enterprise_configuration.degreed_user_password,
+            self.global_degreed_config.degreed_user_id,
+            self.global_degreed_config.degreed_user_password,
             scope
         )
         session = requests.Session()
@@ -113,7 +113,7 @@ class DegreedAPIClient(object):
         self.session = session
         self.expires_at = expires_at
 
-    def _get_oauth_access_token(self, url_base, client_id, client_secret, user_id, user_password, scope):
+    def _get_oauth_access_token(self, client_id, client_secret, user_id, user_password, scope):
         """ Retrieves OAuth 2.0 access token using the client credentials grant.
 
         Args:
@@ -131,12 +131,7 @@ class DegreedAPIClient(object):
             RequestException: If an unexpected response format was received that we could not parse.
             ValueError: If the provided scope does not match any available Degreed API provider scopes.
         """
-        DegreedGlobalConfiguration = apps.get_model(  # pylint: disable=invalid-name
-            'degreed',
-            'DegreedGlobalConfiguration'
-        )
-        global_degreed_config = DegreedGlobalConfiguration.current()
-        url = url_base + global_degreed_config.oauth_api_path
+        url = self.global_degreed_config.oauth_api_path + self.global_degreed_config.oauth_api_path
 
         response = requests.post(
             url,
@@ -147,7 +142,7 @@ class DegreedAPIClient(object):
                 'scope': scope,
             },
             auth=(client_id, client_secret),
-            headers={'content-type': 'application/x-www-form-urlencoded'}
+            headers={'Content-Type': 'application/x-www-form-urlencoded'}
         )
 
         response.raise_for_status()
