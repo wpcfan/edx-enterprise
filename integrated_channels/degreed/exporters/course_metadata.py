@@ -243,7 +243,7 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
             course_id (str): The string identifier of the course in question
             enrollment_url (str): Enterprise landing page url for the given course from enterprise courses API
         """
-        if switch_is_active('Degreed_USE_ENTERPRISE_ENROLLMENT_PAGE'):
+        if switch_is_active('DEGREED_USE_ENTERPRISE_ENROLLMENT_PAGE'):
             return enrollment_url or enterprise_customer.get_course_run_enrollment_url(course_id)
 
         return self.get_course_track_selection_url(enterprise_customer, course_id)
