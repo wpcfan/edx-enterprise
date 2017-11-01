@@ -13,7 +13,7 @@ from logging import getLogger
 
 from consent.models import DataSharingConsent
 from integrated_channels.integrated_channel.exporters import Exporter
-from integrated_channels.utils import parse_datetime_to_epoch
+from integrated_channels.utils import parse_datetime_to_epoch_millis
 from slumber.exceptions import HttpNotFoundError
 
 from django.apps import apps
@@ -154,7 +154,7 @@ class LearnerExporter(Exporter):
         completed_timestamp = None
         course_completed = False
         if completed_date is not None:
-            completed_timestamp = parse_datetime_to_epoch(completed_date)
+            completed_timestamp = parse_datetime_to_epoch_millis(completed_date)
             course_completed = is_passing
 
         return LearnerDataTransmissionAudit(

@@ -15,7 +15,7 @@ from integrated_channels.utils import (
     UNIX_MAX_DATE_STRING,
     UNIX_MIN_DATE_STRING,
     current_time_is_in_interval,
-    parse_datetime_to_epoch,
+    parse_datetime_to_epoch_millis,
 )
 from waffle import switch_is_active
 
@@ -34,10 +34,6 @@ class SapSuccessFactorsCourseExporter(CourseExporter):  # pylint: disable=abstra
     CHUNK_PAGE_LENGTH = 1000
     STATUS_ACTIVE = 'ACTIVE'
     STATUS_INACTIVE = 'INACTIVE'
-
-    def __init__(self, user, enterprise_configuration):
-        super(SapSuccessFactorsCourseExporter, self).__init__(user, enterprise_configuration)
-        self.removed_courses_resolved = False
 
     def export(self):
         """
@@ -176,8 +172,8 @@ class SapSuccessFactorsCourseExporter(CourseExporter):  # pylint: disable=abstra
         start = course_run.get('start') or UNIX_MIN_DATE_STRING
         end = course_run.get('end') or UNIX_MAX_DATE_STRING
         return [{
-            'startDate': parse_datetime_to_epoch(start),
-            'endDate': parse_datetime_to_epoch(end),
+            'startDate': parse_datetime_to_epoch_millis(start),
+            'endDate': parse_datetime_to_epoch_millis(end),
             'active': current_time_is_in_interval(start, end)
         }]
 

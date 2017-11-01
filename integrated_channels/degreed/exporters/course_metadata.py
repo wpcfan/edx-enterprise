@@ -9,14 +9,10 @@ import json
 import os
 from logging import getLogger
 
-from integrated_channels.degreed.constants import DEGREED_OCN_LANGUAGE_CODES
+from django.conf import settings
+
 from integrated_channels.integrated_channel.exporters.course_metadata import CourseExporter
-from integrated_channels.utils import (
-    UNIX_MAX_DATE_STRING,
-    UNIX_MIN_DATE_STRING,
-    current_time_is_in_interval,
-    parse_datetime_to_epoch,
-)
+
 from waffle import switch_is_active
 
 from enterprise.django_compatibility import reverse
@@ -32,12 +28,11 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
     """
 
     CHUNK_PAGE_LENGTH = 1000
+    SHORT_STRING_LIMIT = 255
+    LONG_STRING_LIMIT = 2000
+
     STATUS_ACTIVE = 'ACTIVE'
     STATUS_INACTIVE = 'INACTIVE'
-
-    def __init__(self, user, enterprise_configuration):
-        super(DegreedCourseExporter, self).__init__(user, enterprise_configuration)
-        self.removed_courses_resolved = False
 
     def export(self):
         """
@@ -46,12 +41,14 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
         Yields:
             bytes: JSON-serialized course metadata structure
         """
-        location = 0
-        total_course_count = len(self.courses)
-        while (location < total_course_count) or not location:
-            this_batch = self.courses[location:location+self.CHUNK_PAGE_LENGTH]
-            location += self.CHUNK_PAGE_LENGTH
-            yield json.dumps({'ocnCourses': this_batch}, sort_keys=True).encode('utf-8')
+        yield json.dumps(
+            {
+                'courses': self.courses,
+                'orgCode': self.enterprise_configuration.degreed_company_id,
+                'providerCode': self.enterprise_configuration.provider_code,
+            },
+            sort_keys=True
+        ).encode('utf-8')
 
     @property
     def data(self):
@@ -59,41 +56,79 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
         Return a transformed set of data ready to be exported.
         """
         return {
-            'courseID': self.transform_course_id,
-            'providerID': self.transform_provider_id,
-            'status': self.transform_status,
+            'contentId': self.transform_course_id,
+            'authors': self.transform_authors,
+            'categoryTags': self.transform_category_tags,
+            'url': self.transform_url,
+            'imageUrl': self.transform_image_url,
+            'videoUrl': self.transform_video_url,
             'title': self.transform_title,
             'description': self.transform_description,
-            'thumbnailURI': self.transform_thumbnail_uri,
-            'content': self.transform_content,
-            'price': self.transform_price,
-            'schedule': self.transform_schedule,
-            'revisionNumber': self.transform_revision_number,
+            'difficulty': self.transform_difficulty,
+            'duration': self.transform_duration,
+            'publishDate': self.transform_publish_date,
+            'format': self.transform_format,
+            'institution': self.transform_institution,
+            'costType': self.transform_cost_type,
+            'language': self.transform_language_code
         }
 
-    def transform_language_code(self, code):
+    def transform_category_tags(self, course_run):
         """
-        Transform an ISO language code (for example, en-us) into a language name in the format read by SuccessFactors.
+        Return a transformed version of course tags.
+
+        Note: none formal category tags for courses actually exist at this time. Update this when and if they do.
         """
-        if code is None:
-            return 'English'
+        return []
 
-        components = code.split('-')
-        language_code = components[0]
-        if len(components) == 2:
-            country_code = components[1]
-        elif len(components) == 1:
-            country_code = '_'
-        else:
-            raise ValueError('Language codes may only have up to two components. Could not parse: {}'.format(code))
+    def transform_duration(self, course_run):
+        """
+        Return the transformed duration of the course.
 
-        if language_code not in DEGREED_OCN_LANGUAGE_CODES:
-            LOGGER.warning('Language "%s" is not supported by SAPSF. Sending English by default.', language_code)
-            return 'English'
+        Degreed expects the value to be in minutes.
+        """
+        weeks_to_complete = course_run.get('weeks_to_complete') or 0
+        return weeks_to_complete * 7 * 24 * 60
 
-        language_family = DEGREED_OCN_LANGUAGE_CODES[language_code]
-        language_name = language_family.get(country_code, language_family['_'])
-        return language_name
+    def transform_publish_date(self, course_run):
+        """
+        Return the transformed version of the publish date for this course run.
+
+        Example:
+            2017-02-01T05:00:00Z -> 2017-02-01
+        """
+        # Instead of doing something fancy, since the first 10 characters will always be
+        # of format yyyy-mm-dd, just get the first 10 characters.
+        start = course_run.get('start') or ''
+        return start[:10]
+
+    def transform_institution(self, course_run):
+        """
+        Return the transformed version of the course institution.
+        """
+        institutions = course_run.get('owners')
+        return institutions[0]['name'] if institutions else ''
+
+    def transform_authors(self, course_run):
+        """
+        Return the array of author/instructor names for the course.
+        """
+        return [
+            '{first_name} {last_name}'.format(
+                first_name=instructor.get('given_name') or '',
+                last_name=instructor.get('family_name') or '',
+            ) for instructor in course_run['staff']
+        ]
+
+    def transform_language_code(self, course_run):
+        """
+        Return the ISO 639-1 language code that Degreed expects.
+
+        Example:
+            en-us -> en
+            None -> en
+        """
+        return course_run.get('content_language').split('-')[0] or 'en'
 
     def transform_course_id(self, course_run):
         """
@@ -101,177 +136,81 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
         """
         return course_run['key']
 
-    def transform_provider_id(self, course_run):  # pylint: disable=unused-argument
+    def transform_cost_type(self, course_run):
         """
-        Return the transformed version of the provider ID.
-        """
-        return self.enterprise_configuration.provider_id
+        Return the transformed version of the course enrollment cost type.
 
-    def transform_status(self, course_run):
+        One can use the course track to determine payment status. Values must be one of:
+            - Subscription
+            - Free
+            - Paid
+
+        We only really use the latter 2.
         """
-        Return the transformed version of the course status.
-        """
-        return (
-            self.STATUS_ACTIVE
-            if course_run['availability'] in [self.AVAILABILITY_CURRENT, self.AVAILABILITY_UPCOMING]
-            else self.STATUS_INACTIVE
-        )
+        audit_modes = getattr(settings, 'ENTERPRISE_COURSE_ENROLLMENT_AUDIT_MODES', ['audit', 'honor'])
+        return 'Free' if course_run['type'] in audit_modes else 'Paid'
 
     def transform_title(self, course_run):
         """
         Return the transformed version of the course title, as well as the locale.
         """
-        return [{
-            'locale': self.transform_language_code(course_run.get('content_language')),
-            'value': course_run.get('title') or ''
-        }]
+        return course_run.get('title') or ''
 
     def transform_description(self, course_run):
         """
-        Return the transformed version of the course description, as well as the locale.
-        """
-        return [{
-            'locale': self.transform_language_code(course_run.get('content_language')),
-            'value': (
-                (course_run.get('full_description') or '')
-                or (course_run.get('short_description') or '')
-                or (course_run.get('title') or '')
-            )
-        }]
+        Return the transformed version of the course description.
 
-    def transform_thumbnail_uri(self, course_run):
+        We choose one value out of the course's full description, short description, and title
+        depending on availability and length limits.
         """
-        Return the transformed version of the course's thumbnail URI.
+        full_description = course_run.get('full_description') or ''
+        if 0 < len(full_description) <= self.LONG_STRING_LIMIT:
+            return full_description
+        return course_run.get('short_description') or course_run.get('title') or ''
+
+    def transform_url(self, course_run):
+        """
+        Return the transformed version of the course's track selection URL.
+        """
+        enterprise_customer = course_run['enterprise_customer']
+        if switch_is_active('DEGREED_USE_ENTERPRISE_ENROLLMENT_PAGE'):
+            return (
+                course_run.get('enrollment_url')
+                or enterprise_customer.get_course_run_enrollment_url(course_run['key'])
+            )
+        return self.get_course_track_selection_url(enterprise_customer, course_run['key'])
+
+    def transform_image_url(self, course_run):
+        """
+        Return the transformed version of the course's image URL.
         """
         image = course_run.get('image') or {}
         return image.get('src') or ''
 
-    def transform_content(self, course_run):
+    def transform_video_url(self, course_run):
         """
-        Return the transformed version of the course content.
+        Return the transformed version of the course's video URL.
         """
-        return [{
-            'providerID': self.enterprise_configuration.provider_id,
-            'launchURL': self.get_launch_url(
-                course_run['enterprise_customer'],
-                course_run['key'],
-                course_run.get('enrollment_url') or ''
-            ),
-            'contentTitle': course_run.get('title') or '',
-            'contentID': course_run['key'],
-            'launchType': 3,
-            'mobileEnabled': course_run.get('mobile_available', 'false')
-        }]
+        video = course_run.get('video') or {}
+        return video.get('src') or ''
 
-    def transform_price(self, course_run):  # pylint: disable=unused-argument
+    def transform_difficulty(self, course_run):
         """
-        Return the transformed version of the course price.
+        Return the transformed difficulty.
         """
-        return []
+        return course_run.get('level_type') or ''
 
-    def transform_schedule(self, course_run):
+    def transform_format(self, course_run):
         """
-        Return the transformed version of the course schedule.
+        Return the transformed version of the course run format.
+
+        Degreed expects one of the following values:
+            - Instructor
+            - Online
+            - Virtual
+            - Accredited
         """
-        start = course_run.get('start') or UNIX_MIN_DATE_STRING
-        end = course_run.get('end') or UNIX_MAX_DATE_STRING
-        return [{
-            'startDate': parse_datetime_to_epoch(start),
-            'endDate': parse_datetime_to_epoch(end),
-            'active': current_time_is_in_interval(start, end)
-        }]
-
-    def transform_revision_number(self, course_run):  # pylint: disable=unused-argument
-        """
-        Return the transformed version of the course revision number.
-        """
-        return 1
-
-    def resolve_removed_courses(self, previous_audit_summary):
-        """
-        Ensures courses that are no longer in the catalog get properly marked as inactive.
-
-        Args:
-            previous_audit_summary (dict): The previous audit summary from the last course export.
-
-        Returns:
-            An audit summary of courses with information about their presence in the catalog and current status.
-        """
-        if self.removed_courses_resolved:
-            return {}
-
-        new_audit_summary = {}
-        new_courses = []
-
-        for course in self.courses:
-            course_key = course['courseID']
-            course_status = course['status']
-
-            # Remove the key from previous audit summary so we can process courses that are no longer present,
-            # and keep course records for all previously pushed courses and new, active courses.
-            if previous_audit_summary.pop(course_key, None) or course_status == self.STATUS_ACTIVE:
-                new_courses.append(course)
-                new_audit_summary[course_key] = {
-                    'in_catalog': True,
-                    'status': course_status,
-                }
-
-        for course_key, summary in previous_audit_summary.items():
-            # Add a course payload to self.courses so that courses no longer in the catalog are marked inactive.
-            if summary['status'] == self.STATUS_ACTIVE and summary['in_catalog']:
-                new_courses.append(self.get_course_metadata_for_inactivation(
-                    course_key,
-                    self.enterprise_customer,
-                    self.enterprise_configuration.provider_id
-                ))
-
-                new_audit_summary[course_key] = {
-                    'in_catalog': False,
-                    'status': self.STATUS_INACTIVE,
-                }
-
-        self.courses = new_courses
-        self.removed_courses_resolved = True
-        return new_audit_summary
-
-    def get_launch_url(self, enterprise_customer, course_id, enrollment_url=None):
-        """
-        Given an EnterpriseCustomer and a course ID, determine the appropriate launch url.
-
-        Args:
-            enterprise_customer (EnterpriseCustomer): The EnterpriseCustomer that a URL needs to be built for
-            course_id (str): The string identifier of the course in question
-            enrollment_url (str): Enterprise landing page url for the given course from enterprise courses API
-        """
-        if switch_is_active('DEGREED_USE_ENTERPRISE_ENROLLMENT_PAGE'):
-            return enrollment_url or enterprise_customer.get_course_run_enrollment_url(course_id)
-
-        return self.get_course_track_selection_url(enterprise_customer, course_id)
-
-    def get_course_metadata_for_inactivation(self, course_id, enterprise_customer, provider_id):
-        """
-        Provide the minimal course metadata structure for updating a course to be inactive.
-        """
-        return {
-            'courseID': course_id,
-            'providerID': provider_id,
-            'status': self.STATUS_INACTIVE,
-            'title': [
-                {
-                    'locale': self.transform_language_code(None),
-                    'value': course_id
-                },
-            ],
-            'content': [
-                {
-                    'providerID': provider_id,
-                    'launchURL': self.get_course_track_selection_url(enterprise_customer, course_id),
-                    'contentTitle': 'Course Description',
-                    'launchType': 3,
-                    'contentID': course_id,
-                }
-            ],
-        }
+        return 'Instructor' if course_run.get('pacing_type') == 'instructor_paced' else 'Online'
 
     def get_course_track_selection_url(self, enterprise_customer, course_id):
         """

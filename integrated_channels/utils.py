@@ -16,13 +16,28 @@ UNIX_MIN_DATE_STRING = '1970-01-01T00:00:00Z'
 UNIX_MAX_DATE_STRING = '2038-01-19T03:14:07Z'
 
 
-def parse_datetime_to_epoch(datestamp):
+def parse_datetime_to_epoch(datestamp, magnitude=1.0):
     """
-    Convert an ISO-8601 datetime string to a Unix epoch timestamp in milliseconds.
+    Convert an ISO-8601 datetime string to a Unix epoch timestamp in some magnitude.
+
+    By default, returns seconds.
     """
     parsed_datetime = parse_lms_api_datetime(datestamp)
     time_since_epoch = parsed_datetime - UNIX_EPOCH
-    return int(time_since_epoch.total_seconds() * 1000)
+    return int(time_since_epoch.total_seconds() * magnitude)
+
+
+def parse_datetime_to_epoch_millis(datestamp):
+    """
+    Convert an ISO-8601 datetime string to a Unix epoch timestamp in milliseconds.
+    """
+    return parse_datetime_to_epoch(datestamp, magnitude=1000.0)
+
+def parse_datetime_to_epoch_minutes(datestamp):
+    """
+    Convert an ISO-8601 datetime string to a Unix epoch timestamp in minutes.
+    """
+    return parse_datetime_to_epoch(datestamp, magnitude=(1 / 60.0))
 
 
 def current_time_is_in_interval(start, end):
@@ -32,3 +47,12 @@ def current_time_is_in_interval(start, end):
     interval_start = parse_lms_api_datetime(start or UNIX_MIN_DATE_STRING)
     interval_end = parse_lms_api_datetime(end or UNIX_MAX_DATE_STRING)
     return interval_start <= timezone.now() <= interval_end
+
+
+def minutes_in_interval(start, end):
+    """
+    Determine the difference in minutes between some interval.
+    """
+    interval_start = parse_datetime_to_epoch_minutes(start or UNIX_MIN_DATE_STRING)
+    interval_end = parse_datetime_to_epoch_minutes(end or UNIX_MAX_DATE_STRING)
+    return interval_end - interval_start

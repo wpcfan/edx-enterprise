@@ -33,6 +33,7 @@ class CourseExporter(Exporter):
         Save the appropriate details for use elsewhere in the object.
         """
         super(CourseExporter, self).__init__(user, enterprise_configuration)
+        self.removed_courses_resolved = False
         self.courses = []
         client = EnterpriseApiClient(self.user)
         enterprise_course_runs = client.get_enterprise_course_runs(self.enterprise_customer)
@@ -80,3 +81,24 @@ class CourseExporter(Exporter):
         for key, transform in self.data.items():
             transformed_data[key] = transform(course_run) if transform is not None else course_run.get(key)
         return transformed_data
+
+    def resolve_removed_courses(self, *args, **kwargs):
+        """
+        Default way to resolve the removal of courses.
+
+        This is implemented as such to allow certain integrated channels that do not really utilize
+        this functionality to just return the entire set of ready-to-transmit courses for auditing
+        purposes.
+
+        Note that these integrated channels are presumed to be handling updating their course
+        availability on upstream catalogs through some other technique, i.e. DELETE requests
+        made to the integrated channel's API to remove a course from the upstream catalog.
+
+        An example of an integrated channel that may utilize this: SAPSF -- this function
+        would be overriden to generate a course metadata payload that embeds availability
+        data to have a correct audit summary at the end of the transmission.
+        """
+        if self.removed_courses_resolved:
+            return {}
+        self.removed_courses_resolved = True
+        return self.courses

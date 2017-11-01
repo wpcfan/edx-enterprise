@@ -38,4 +38,4 @@ class TestIntegratedChannelsUtils(unittest.TestCase):
     )
     @ddt.unpack
     def test_parse_datetime_to_epoch(self, iso8601, epoch):
-        assert utils.parse_datetime_to_epoch(iso8601) == epoch
+        assert utils.parse_datetime_to_epoch_millis(iso8601) == epoch
