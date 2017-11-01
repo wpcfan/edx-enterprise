@@ -9,7 +9,7 @@ from __future__ import absolute_import, unicode_literals
 from logging import getLogger
 
 from integrated_channels.integrated_channel.exporters.learner_data import LearnerExporter
-from integrated_channels.utils import parse_datetime_to_epoch
+from integrated_channels.utils import parse_datetime_to_epoch_millis
 
 from django.apps import apps
 
@@ -36,7 +36,7 @@ class DegreedLearnerExporter(LearnerExporter):
         completed_timestamp = None
         course_completed = False
         if completed_date is not None:
-            completed_timestamp = parse_datetime_to_epoch(completed_date)
+            completed_timestamp = parse_datetime_to_epoch_millis(completed_date)
             course_completed = is_passing
 
         degreed_user_id = enterprise_enrollment.enterprise_customer_user.get_remote_id()

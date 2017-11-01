@@ -28,7 +28,7 @@ class CourseTransmitter(Transmitter):
 
     def __init__(self, enterprise_configuration, client=IntegratedChannelApiClient):
         """
-
+        By default, use the interface integrated channel API client which raises an error if used.
         """
         super(CourseTransmitter, self).__init__(
             enterprise_configuration=enterprise_configuration,
@@ -39,21 +39,6 @@ class CourseTransmitter(Transmitter):
         """
         Transmit the course metadata payload to the integrated channel.
         """
-        # pylint: disable=invalid-name
-        CatalogTransmissionAudit = apps.get_model('integrated_channel', 'CatalogTransmissionAudit')
-        try:
-            # TODO: Make what catalog transmission audit class we use configurable -- different integrated channels
-            # may use subclassed catalog transmission audits, but still reuse CourseTransmitter's
-            # pre-built transmission functionality.
-            last_catalog_transmission = CatalogTransmissionAudit.objects.filter(
-                error_message='',
-                enterprise_customer_uuid=self.enterprise_configuration.enterprise_customer.uuid
-            ).latest('created')
-        except ObjectDoesNotExist:
-            last_audit_summary = {}
-        else:
-            last_audit_summary = json.loads(last_catalog_transmission.audit_summary)
-
         total_transmitted = 0
         errors = []
         status_codes = []
@@ -69,18 +54,30 @@ class CourseTransmitter(Transmitter):
         error_message = ', '.join(errors) if errors else ''
         code_string = ', '.join(status_codes)
 
-        catalog_transmission_audit = CatalogTransmissionAudit(
+        # pylint: disable=invalid-name
+        CatalogTransmissionAudit = apps.get_model('integrated_channel', 'CatalogTransmissionAudit')
+        try:
+            last_catalog_transmission = CatalogTransmissionAudit.objects.filter(
+                error_message='',
+                enterprise_customer_uuid=self.enterprise_configuration.enterprise_customer.uuid
+            ).latest('created')
+            last_audit_summary = json.loads(last_catalog_transmission.audit_summary)
+        except ObjectDoesNotExist:
+            last_audit_summary = {}
+
+        CatalogTransmissionAudit(
             enterprise_customer_uuid=self.enterprise_configuration.enterprise_customer.uuid,
             total_courses=len(payload.courses),
             status=code_string,
             error_message=error_message,
             audit_summary=json.dumps(payload.resolve_removed_courses(last_audit_summary)),
-        )
-        catalog_transmission_audit.save()
+        ).save()
 
     def transmit_block(self, course_metadata):
         """
-        SAPSuccessFactors can only send 1000 items at a time, so this method sends one "page" at a time.
+        Transmit a block of course metadata to the integrated channel.
+
+        Handle any request errors and logging requirements.
 
         Args:
             course_metadata (bytes): A set of bytes containing a page's worth of course metadata
