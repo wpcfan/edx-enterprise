@@ -33,6 +33,7 @@ def parse_datetime_to_epoch_millis(datestamp):
     """
     return parse_datetime_to_epoch(datestamp, magnitude=1000.0)
 
+
 def parse_datetime_to_epoch_minutes(datestamp):
     """
     Convert an ISO-8601 datetime string to a Unix epoch timestamp in minutes.

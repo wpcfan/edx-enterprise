@@ -69,7 +69,7 @@ class DegreedGlobalConfiguration(ConfigurationModel):
         max_length=255,
         blank=True,
         verbose_name="Degreed User Password",
-        help_text = (
+        help_text=(
             "The Degreed User Password provided to the content provider by Degreed. "
             "It is required for getting the OAuth access token."
         )

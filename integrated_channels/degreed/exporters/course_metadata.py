@@ -9,11 +9,10 @@ import json
 import os
 from logging import getLogger
 
-from django.conf import settings
-
 from integrated_channels.integrated_channel.exporters.course_metadata import CourseExporter
-
 from waffle import switch_is_active
+
+from django.conf import settings
 
 from enterprise.django_compatibility import reverse
 from six.moves.urllib.parse import urlencode, urlunparse  # pylint: disable=import-error
@@ -73,7 +72,7 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
             'language': self.transform_language_code
         }
 
-    def transform_category_tags(self, course_run):
+    def transform_category_tags(self, course_run):  # pylint: disable=unused-argument
         """
         Return a transformed version of course tags.
 
@@ -164,7 +163,7 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
         depending on availability and length limits.
         """
         full_description = course_run.get('full_description') or ''
-        if 0 < len(full_description) <= self.LONG_STRING_LIMIT:
+        if 0 < len(full_description) <= self.LONG_STRING_LIMIT:  # pylint: disable=len-as-condition
             return full_description
         return course_run.get('short_description') or course_run.get('title') or ''
 
