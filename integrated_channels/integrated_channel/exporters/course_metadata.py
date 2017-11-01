@@ -82,7 +82,7 @@ class CourseExporter(Exporter):
             transformed_data[key] = transform(course_run) if transform is not None else course_run.get(key)
         return transformed_data
 
-    def resolve_removed_courses(self, *args, **kwargs):
+    def resolve_removed_courses(self, *args, **kwargs):  # pylint: disable=unused-argument
         """
         Default way to resolve the removal of courses.
 

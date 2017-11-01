@@ -183,7 +183,7 @@ class SapSuccessFactorsCourseExporter(CourseExporter):  # pylint: disable=abstra
         """
         return 1
 
-    def resolve_removed_courses(self, previous_audit_summary):
+    def resolve_removed_courses(self, previous_audit_summary):  # pylint: disable=arguments-differ
         """
         Ensures courses that are no longer in the catalog get properly marked as inactive.
 
