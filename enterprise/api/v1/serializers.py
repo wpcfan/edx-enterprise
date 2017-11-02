@@ -14,6 +14,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from enterprise import models, utils
 from enterprise.api.v1.mixins import EnterpriseCourseContextSerializerMixin
+from enterprise.api_client.lms import ThirdPartyAuthApiClient
 
 
 class ImmutableStateSerializer(serializers.Serializer):
@@ -412,15 +413,14 @@ class EnterpriseCustomerReportingConfigurationSerializer(serializers.ModelSerial
     enterprise_customer = EnterpriseCustomerSerializer()
 
 
-class EnterpriseCustomerEnrollUserInCourseRunSerializer(serializers.Serializer):
+class EnterpriseCustomerCourseEnrollmentsSerializer(serializers.Serializer):
     """Serializes enrollment information for a collection of students/emails.
 
-    This is mainly useful for implementing validation when performing bulk enrollment operations.
+    This is mainly useful for implementing validation when performing enrollment operations.
     """
     lms_user_id = serializers.CharField(required=False)
     tpa_user_id = serializers.CharField(required=False)
     user_email = serializers.EmailField(required=False)
-    enterprise_id = serializers.UUIDField(required=True)
     course_run_id = serializers.CharField(required=True)
     course_mode = serializers.ChoiceField(
         choices=(
@@ -432,12 +432,103 @@ class EnterpriseCustomerEnrollUserInCourseRunSerializer(serializers.Serializer):
     )
     email_students = serializers.BooleanField(default=False, required=False)
 
+    enterprise_customer_user = None
+
+    def create(self, validated_data):
+        enterprise_customer = self.context.get('enterprise_customer')
+        user_email = validated_data.get('user_email')
+        course_run_id = validated_data.get('course_run_id')
+        course_mode = validated_data.get('course_mode')
+        email_students = validated_data.get('email_students')
+
+        if self.enterprise_customer_user:
+            self.enterprise_customer_user.enroll(course_run_id, course_mode)
+        elif user_email:
+            self.enterprise_customer_user = enterprise_customer.enroll_user_pending_registration(
+                user_email,
+                course_mode,
+                course_run_id
+            )
+
+        if email_students:
+            enterprise_customer.notify_enrolled_learners(
+                self.context.get('request_user'),
+                course_run_id,
+                [self.enterprise_customer_user]
+            )
+
+    def update(self, instance, validated_data):
+        pass
+
+    def validate_lms_user_id(self, value):
+        enterprise_customer = self.context.get('enterprise_customer')
+
+        try:
+            # Ensure the given user is associated with the enterprise.
+            self.enterprise_customer_user = models.EnterpriseCustomerUser.objects.get(
+                user_id=value,
+                enterprise_customer=enterprise_customer
+            )
+        except models.EnterpriseCustomerUser.DoesNotExist:
+            raise serializers.ValidationError('Unable to find user {user} associated with enterprise {enterprise}'.format(
+                user=value,
+                enterprise=enterprise_customer.name
+            ))
+
+        return value
+
+    def validate_tpa_user_id(self, value):
+        enterprise_customer = self.context.get('enterprise_customer')
+
+        try:
+            tpa_client = ThirdPartyAuthApiClient()
+            username = tpa_client.get_username_from_remote_id(
+                enterprise_customer.identity_provider, value
+            )
+            user = User.objects.get(username=username)
+            self.enterprise_customer_user = models.EnterpriseCustomerUser.objects.get(
+                user_id=user.id,
+                enterprise_customer=enterprise_customer
+            )
+        except models.EnterpriseCustomerUser.DoesNotExist:
+            raise serializers.ValidationError(
+                'Unable to find user {user} associated with enterprise {enterprise}'.format(
+                    user=value,
+                    enterprise=enterprise_customer.name
+                )
+            )
+
+        return value
+
+    def validate_user_email(self, value):
+        enterprise_customer = self.context.get('enterprise_customer')
+
+        try:
+            user = User.objects.get(email=value)
+            self.enterprise_customer_user = models.EnterpriseCustomerUser.objects.get(
+                user_id=user.id,
+                enterprise_customer=enterprise_customer
+            )
+        except User.DoesNotExist, models.EnterpriseCustomerUser.DoesNotExist:
+            pass
+
+        return value
+
     def validate(self, data):
         """
         Validate that at least one of the user identifier fields has been passed in.
         """
-        if not data.get('lms_user_id') and not data.get('tpa_user_id') and not data.get('user_email'):
+        lms_user_id = data.get('lms_user_id')
+        tpa_user_id = data.get('tpa_user_id')
+        user_email = data.get('user_email')
+        if not lms_user_id and not tpa_user_id and not user_email:
             raise serializers.ValidationError('At least one of the following fields must be specified: '
                                               'lms_user_id, tpa_user_id, user_email')
+
+        if not self.enterprise_customer_user and not user_email:
+            raise serializers.ValidationError(
+                'Neither lms_user_id or tpa_user_id mapped to an EnterpriseCustomerUser, '
+                'and user_email was not given to create a new user.'
+            )
 
         return data
