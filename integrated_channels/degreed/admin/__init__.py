@@ -22,7 +22,7 @@ class DegreedGlobalConfigurationAdmin(ConfigurationModelAdmin):
         "course_api_path",
         "oauth_api_path",
         "degreed_user_id",
-        "degreed_user_password"
+        "degreed_user_password",
         "provider_id",
     )
 

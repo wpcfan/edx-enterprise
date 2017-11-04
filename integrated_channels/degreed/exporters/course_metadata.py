@@ -44,7 +44,7 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
             {
                 'courses': self.courses,
                 'orgCode': self.enterprise_configuration.degreed_company_id,
-                'providerCode': self.enterprise_configuration.provider_code,
+                'providerCode': self.enterprise_configuration.provider_id,
             },
             sort_keys=True
         ).encode('utf-8')
@@ -78,7 +78,7 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
 
         Note: none formal category tags for courses actually exist at this time. Update this when and if they do.
         """
-        return []
+        return course_run.get('tags') or []
 
     def transform_duration(self, course_run):
         """
@@ -127,7 +127,8 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
             en-us -> en
             None -> en
         """
-        return course_run.get('content_language').split('-')[0] or 'en'
+        code = course_run.get('content_language') or ''
+        return code.split('-')[0] or 'en'
 
     def transform_course_id(self, course_run):
         """
@@ -190,6 +191,7 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
         """
         Return the transformed version of the course's video URL.
         """
+        from pdb import set_trace;set_trace()
         video = course_run.get('video') or {}
         return video.get('src') or ''
 

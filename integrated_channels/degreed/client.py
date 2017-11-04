@@ -87,7 +87,7 @@ class DegreedAPIClient(object):
             scope (str): Must be one of
         """
         now = datetime.datetime.utcnow()
-        if now >= self.expires_at or self.session is None:
+        if self.session is None or self.expires_at is None or now >= self.expires_at:
             # Create a new session with a valid token
             if self.session:
                 self.session.close()
@@ -131,11 +131,11 @@ class DegreedAPIClient(object):
             RequestException: If an unexpected response format was received that we could not parse.
             ValueError: If the provided scope does not match any available Degreed API provider scopes.
         """
-        url = self.global_degreed_config.oauth_api_path + self.global_degreed_config.oauth_api_path
+        url = self.global_degreed_config.degreed_base_url + self.global_degreed_config.oauth_api_path
 
         response = requests.post(
             url,
-            json={
+            data={
                 'grant_type': 'password',
                 'username': user_id,
                 'password': user_password,

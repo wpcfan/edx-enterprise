@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
                 ('enterprise_course_enrollment_id', models.PositiveIntegerField()),
                 ('course_id', models.CharField(help_text="The course run's key which is used to uniquely identify the course for Degreed.", max_length=255)),
                 ('course_completed', models.BooleanField(default=True, help_text="The learner's course completion status transmitted to Degreed.")),
-                ('completed_timestamp', models.DateTimeField()),
+                ('completed_timestamp', models.CharField(help_text='Represents the Degreed representation of a timestamp: yyyy-mm-dd, which is always 10 characters.', max_length=10)),
                 ('status', models.CharField(max_length=100)),
                 ('error_message', models.TextField(blank=True)),
                 ('created', models.DateTimeField(auto_now_add=True)),
