@@ -191,7 +191,6 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
         """
         Return the transformed version of the course's video URL.
         """
-        from pdb import set_trace;set_trace()
         video = course_run.get('video') or {}
         return video.get('src') or ''
 
