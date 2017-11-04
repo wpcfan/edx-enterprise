@@ -2,6 +2,7 @@
 """
 Enterprise Integrated Channel management commands.
 """
+
 from __future__ import absolute_import, unicode_literals
 
 from django.core.management.base import CommandError
@@ -11,26 +12,11 @@ from enterprise.models import EnterpriseCustomer
 from integrated_channels.sap_success_factors.models import SAPSuccessFactorsEnterpriseCustomerConfiguration
 from integrated_channels.degreed.models import DegreedEnterpriseCustomerConfiguration
 
-
-# Import djcelery, or stub it if not available.
-try:
-    from djcelery.celery import task as celery_task
-except ImportError:
-    def celery_task(func):
-        """Use a no-op decorator if djcelery is not available."""
-        def no_delay(*args, **kwargs):
-            """
-            Provides the celery.task.delay function, which can be used to spawn an asynchronous celery task.
-            Here, it just calls the function.
-            """
-            func(*args, **kwargs)
-        func.delay = no_delay
-        return func
-
 # Mapping between the channel code and the channel configuration class
 INTEGRATED_CHANNEL_CHOICES = {
     channel_class.channel_code(): channel_class
-    for channel_class in (SAPSuccessFactorsEnterpriseCustomerConfiguration, DegreedEnterpriseCustomerConfiguration,)
+    for channel_class in (SAPSuccessFactorsEnterpriseCustomerConfiguration,
+                          DegreedEnterpriseCustomerConfiguration,)
 }
 
 
