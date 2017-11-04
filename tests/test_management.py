@@ -33,7 +33,7 @@ from test_utils.fake_enterprise_api import EnterpriseMockMixin
 @mark.django_db
 class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseMockMixin, CourseDiscoveryApiTestMixin):
     """
-    Test the transmit_courseware_data management command.
+    Test the transmit_course_metadata management command.
     """
 
     def setUp(self):
@@ -57,7 +57,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         invalid_customer_id = faker.uuid4()  # pylint: disable=no-member
         error = 'Enterprise customer {} not found, or not active'.format(invalid_customer_id)
         with raises(CommandError) as excinfo:
-            call_command('transmit_courseware_data', '--catalog_user', 'C-3PO', enterprise_customer=invalid_customer_id)
+            call_command('transmit_course_metadata', '--catalog_user', 'C-3PO', enterprise_customer=invalid_customer_id)
         assert str(excinfo.value) == error
 
     def test_user_not_set(self):
@@ -65,18 +65,18 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         py2error = 'Error: argument --catalog_user is required'
         py3error = 'Error: the following arguments are required: --catalog_user'
         with raises(CommandError) as excinfo:
-            call_command('transmit_courseware_data', enterprise_customer=self.enterprise_customer.uuid)
+            call_command('transmit_course_metadata', enterprise_customer=self.enterprise_customer.uuid)
         assert str(excinfo.value) in (py2error, py3error)
 
     def test_override_user(self):
         error = 'A user with the username bob was not found.'
         with raises(CommandError) as excinfo:
-            call_command('transmit_courseware_data', '--catalog_user', 'bob')
+            call_command('transmit_course_metadata', '--catalog_user', 'bob')
         assert str(excinfo.value) == error
 
-    @mock.patch('integrated_channels.integrated_channel.management.commands.transmit_courseware_data.send_data_task')
+    @mock.patch('integrated_channels.integrated_channel.management.commands.transmit_course_metadata.send_data_task')
     def test_working_user(self, mock_data_task):
-        call_command('transmit_courseware_data', '--catalog_user', 'C-3PO')
+        call_command('transmit_course_metadata', '--catalog_user', 'C-3PO')
         mock_data_task.delay.assert_called_once_with('C-3PO', 'SAP', 1)
 
     @responses.activate
@@ -93,7 +93,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         """
         Verify the data transmission task for integrated channels with error.
 
-        Test that the management command `transmit_courseware_data` transmits
+        Test that the management command `transmit_course_metadata` transmits
         courses metadata related to other integrated channels even if an
         integrated channel fails to transmit due to some error.
         """
@@ -154,7 +154,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         ]
 
         with LogCapture(level=logging.INFO) as log_capture:
-            call_command('transmit_courseware_data', '--catalog_user', 'C-3PO')
+            call_command('transmit_course_metadata', '--catalog_user', 'C-3PO')
             for index, message in enumerate(expected_messages):
                 assert message in log_capture.records[index].getMessage()
 
@@ -222,7 +222,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         ]
 
         with LogCapture(level=logging.INFO) as log_capture:
-            call_command('transmit_courseware_data', '--catalog_user', 'C-3PO')
+            call_command('transmit_course_metadata', '--catalog_user', 'C-3PO')
             for index, message in enumerate(expected_messages):
                 assert message in log_capture.records[index].getMessage()
 
@@ -240,7 +240,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         # Remove all integrated channels
         SAPSuccessFactorsEnterpriseCustomerConfiguration.objects.all().delete()
         with LogCapture(level=logging.INFO) as log_capture:
-            call_command('transmit_courseware_data', '--catalog_user', user.username)
+            call_command('transmit_course_metadata', '--catalog_user', user.username)
 
             # Because there are no IntegratedChannels, the process will end early.
             assert not log_capture.records
@@ -262,7 +262,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         integrated_channel_enterprise.save()
 
         with LogCapture(level=logging.INFO) as log_capture:
-            call_command('transmit_courseware_data', '--catalog_user', self.user.username)
+            call_command('transmit_course_metadata', '--catalog_user', self.user.username)
 
             # Because there are no EnterpriseCustomers with a catalog, the process will end early.
             assert not log_capture.records
