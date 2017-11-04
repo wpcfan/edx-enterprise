@@ -9,6 +9,7 @@ from django.utils.translation import ugettext as _
 
 from enterprise.models import EnterpriseCustomer
 from integrated_channels.sap_success_factors.models import SAPSuccessFactorsEnterpriseCustomerConfiguration
+from integrated_channels.degreed.models import DegreedEnterpriseCustomerConfiguration
 
 
 # Import djcelery, or stub it if not available.
@@ -29,7 +30,7 @@ except ImportError:
 # Mapping between the channel code and the channel configuration class
 INTEGRATED_CHANNEL_CHOICES = {
     channel_class.channel_code(): channel_class
-    for channel_class in (SAPSuccessFactorsEnterpriseCustomerConfiguration,)
+    for channel_class in (SAPSuccessFactorsEnterpriseCustomerConfiguration, DegreedEnterpriseCustomerConfiguration,)
 }
 
 

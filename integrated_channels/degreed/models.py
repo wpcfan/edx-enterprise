@@ -155,7 +155,7 @@ class DegreedEnterpriseCustomerConfiguration(EnterpriseCustomerPluginConfigurati
         """
         Returns an capitalized identifier for this channel class, unique among subclasses.
         """
-        return 'Degreed'
+        return 'DEGREED'
 
     @property
     def provider_id(self):
@@ -218,8 +218,13 @@ class DegreedLearnerDataTransmissionAudit(models.Model):
         help_text="The learner's course completion status transmitted to Degreed."
     )
 
-    # The API docs say "DateTime?" -- we'll have to test this.
-    completed_timestamp = models.DateTimeField()
+    completed_timestamp = models.CharField(
+        max_length=10,
+        help_text=(
+            'Represents the Degreed representation of a timestamp: yyyy-mm-dd, '
+            'which is always 10 characters.'
+        )
+    )
 
     # Request-related information.
     status = models.CharField(max_length=100, blank=False, null=False)
