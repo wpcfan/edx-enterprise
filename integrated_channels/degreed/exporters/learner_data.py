@@ -6,10 +6,10 @@ Learner data exporter for Enterprise Integrated Channel Degreed.
 
 from __future__ import absolute_import, unicode_literals
 
+from datetime import datetime
 from logging import getLogger
 
 from integrated_channels.integrated_channel.exporters.learner_data import LearnerExporter
-from integrated_channels.utils import parse_datetime_to_epoch_millis
 
 from django.apps import apps
 
@@ -21,11 +21,13 @@ class DegreedLearnerExporter(LearnerExporter):
     Base class for exporting learner completion data to integrated channels.
     """
 
-    GRADE_PASSING = 'Pass'
-    GRADE_FAILING = 'Fail'
-    GRADE_INCOMPLETE = 'In Progress'
-
-    def get_learner_data_record(self, enterprise_enrollment, completed_date=None, grade=None, is_passing=False):
+    def get_learner_data_record(
+            self,
+            enterprise_enrollment,
+            completed_date=None,
+            is_passing=False,
+            **kwargs
+    ):  # pylint: disable=arguments-differ,unused-argument
         """
         Return a DegreedLearnerDataTransmissionAudit with the given enrollment and course completion data.
 
@@ -33,14 +35,14 @@ class DegreedLearnerExporter(LearnerExporter):
 
         If no remote ID can be found, return None.
         """
-        completed_timestamp = None
-        course_completed = False
-        if completed_date is not None:
-            completed_timestamp = parse_datetime_to_epoch_millis(completed_date)
-            course_completed = is_passing
+        # Degreed expects completion dates of the form 'yyyy-mm-dd'.
+        completed_timestamp = '-'.join([
+            str(completed_date.year),
+            str(completed_date.month),
+            str(completed_date.day),
+        ]) if isinstance(completed_date, datetime) else None
 
         degreed_user_id = enterprise_enrollment.enterprise_customer_user.get_remote_id()
-
         if degreed_user_id is not None:
             DegreedLearnerDataTransmissionAudit = apps.get_model(  # pylint: disable=invalid-name
                 'degreed',
@@ -50,9 +52,8 @@ class DegreedLearnerExporter(LearnerExporter):
                 enterprise_course_enrollment_id=enterprise_enrollment.id,
                 degreed_user_id=degreed_user_id,
                 course_id=enterprise_enrollment.course_id,
-                course_completed=course_completed,
+                course_completed=completed_date is not None and is_passing,
                 completed_timestamp=completed_timestamp,
-                grade=grade,
             )
         else:
             LOGGER.debug(
