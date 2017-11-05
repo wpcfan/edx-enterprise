@@ -14,7 +14,7 @@ LOGGER = get_task_logger(__name__)
 
 
 @task(track_started=True)
-def send_data_task(username, channel_code, channel_pk):
+def transmit_course_metadata(username, channel_code, channel_pk):
     """
     Task to send course data to each linked integrated channel
 

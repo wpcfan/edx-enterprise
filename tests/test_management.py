@@ -74,7 +74,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
             call_command('transmit_course_metadata', '--catalog_user', 'bob')
         assert str(excinfo.value) == error
 
-    @mock.patch('integrated_channels.integrated_channel.management.commands.transmit_course_metadata.send_data_task')
+    @mock.patch('integrated_channels.integrated_channel.management.commands.transmit_course_metadata.transmit_course_metadata')
     def test_working_user(self, mock_data_task):
         call_command('transmit_course_metadata', '--catalog_user', 'C-3PO')
         mock_data_task.delay.assert_called_once_with('C-3PO', 'SAP', 1)
