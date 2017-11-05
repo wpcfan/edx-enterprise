@@ -266,11 +266,8 @@ class DegreedLearnerDataTransmissionAudit(models.Model):
         """
         Convert the audit record's fields into Degreed key/value pairs.
         """
-        return dict(
-            employeeId=self.degreed_user_id,
-            id=self.course_id,
-            orgCode=self.provider_id,
-            courseCompleted="true" if self.course_completed else "false",
-            completedTimestamp=self.completed_timestamp,
-            grade=self.grade,
-        )
+        return {
+            'employeeId': self.degreed_user_id,
+            'id': self.course_id,
+            'completionDate': self.completed_timestamp,
+        }

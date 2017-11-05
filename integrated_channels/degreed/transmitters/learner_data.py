@@ -43,7 +43,10 @@ class DegreedLearnerTransmitter(LearnerTransmitter):
             model_name='DegreedLearnerDataTransmissionAudit'
         )
         for learner_data in payload.export():
-            serialized_payload = learner_data.serialize()
+            serialized_payload = {
+                'orgCode': self.enterprise_configuration.degreed_company_id,
+                'completions': [learner_data.serialize()]
+            }
             LOGGER.info(serialized_payload)
 
             enterprise_enrollment_id = learner_data.enterprise_course_enrollment_id

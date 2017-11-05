@@ -21,10 +21,6 @@ class SapSuccessFactorsLearnerExporter(LearnerExporter):
     Base class for exporting learner completion data to integrated channels.
     """
 
-    GRADE_PASSING = 'Pass'
-    GRADE_FAILING = 'Fail'
-    GRADE_INCOMPLETE = 'In Progress'
-
     def get_learner_data_record(self, enterprise_enrollment, completed_date=None, grade=None, is_passing=False):
         """
         Return a SapSuccessFactorsLearnerDataTransmissionAudit with the given enrollment and course completion data.
