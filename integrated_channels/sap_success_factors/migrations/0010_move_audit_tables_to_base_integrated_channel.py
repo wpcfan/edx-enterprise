@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sap_success_factors', '0008_historicalsapsuccessfactorsenterprisecustomerconfiguration_history_change_reason'),
+        ('sap_success_factors', '0009_sapsuccessfactors_remove_enterprise_enrollment_page_waffle_flag'),
     ]
 
     database_operations = [

@@ -10,12 +10,8 @@ import os
 from logging import getLogger
 
 from integrated_channels.integrated_channel.exporters.course_metadata import CourseExporter
-from waffle import switch_is_active
 
 from django.conf import settings
-
-from enterprise.django_compatibility import reverse
-from six.moves.urllib.parse import urlencode, urlunparse  # pylint: disable=import-error
 
 LOGGER = getLogger(__name__)
 COURSE_URL_SCHEME = os.environ.get('DEGREED_COURSE_EXPORT_DEFAULT_URL_SCHEME', 'https')
@@ -172,13 +168,10 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
         """
         Return the transformed version of the course's track selection URL.
         """
-        enterprise_customer = course_run['enterprise_customer']
-        if switch_is_active('DEGREED_USE_ENTERPRISE_ENROLLMENT_PAGE'):
-            return (
-                course_run.get('enrollment_url')
-                or enterprise_customer.get_course_run_enrollment_url(course_run['key'])
-            )
-        return self.get_course_track_selection_url(enterprise_customer, course_run['key'])
+        return (
+            course_run.get('enrollment_url')
+            or course_run['enterprise_customer'].get_course_run_enrollment_url(course_run['key'])
+        )
 
     def transform_image_url(self, course_run):
         """
@@ -211,20 +204,3 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
             - Accredited
         """
         return 'Instructor' if course_run.get('pacing_type') == 'instructor_paced' else 'Online'
-
-    def get_course_track_selection_url(self, enterprise_customer, course_id):
-        """
-        Given an EnterpriseCustomer and a course ID, craft a URL that links to the track selection page for that course.
-
-        Args:
-            enterprise_customer (EnterpriseCustomer): The EnterpriseCustomer that a URL needs to be built for
-            course_id (str): The string identifier of the course in question
-        """
-        netloc = enterprise_customer.site.domain
-        scheme = COURSE_URL_SCHEME
-        if enterprise_customer.identity_provider:
-            tpa_hint = urlencode({'tpa_hint': enterprise_customer.identity_provider})
-        else:
-            tpa_hint = ''
-        path = reverse('course_modes_choose', args=[course_id])
-        return urlunparse((scheme, netloc, path, None, tpa_hint, None))

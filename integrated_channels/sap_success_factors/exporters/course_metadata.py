@@ -17,10 +17,6 @@ from integrated_channels.utils import (
     current_time_is_in_interval,
     parse_datetime_to_epoch_millis,
 )
-from waffle import switch_is_active
-
-from enterprise.django_compatibility import reverse
-from six.moves.urllib.parse import urlencode, urlunparse  # pylint: disable=import-error
 
 LOGGER = getLogger(__name__)
 COURSE_URL_SCHEME = os.environ.get('SUCCESSFACTORS_COURSE_EXPORT_DEFAULT_URL_SCHEME', 'https')
@@ -239,10 +235,7 @@ class SapSuccessFactorsCourseExporter(CourseExporter):  # pylint: disable=abstra
             course_id (str): The string identifier of the course in question
             enrollment_url (str): Enterprise landing page url for the given course from enterprise courses API
         """
-        if switch_is_active('SAP_USE_ENTERPRISE_ENROLLMENT_PAGE'):
-            return enrollment_url or enterprise_customer.get_course_run_enrollment_url(course_id)
-
-        return self.get_course_track_selection_url(enterprise_customer, course_id)
+        return enrollment_url or enterprise_customer.get_course_run_enrollment_url(course_id)
 
     def get_course_metadata_for_inactivation(self, course_id, enterprise_customer, provider_id):
         """
@@ -261,27 +254,10 @@ class SapSuccessFactorsCourseExporter(CourseExporter):  # pylint: disable=abstra
             'content': [
                 {
                     'providerID': provider_id,
-                    'launchURL': self.get_course_track_selection_url(enterprise_customer, course_id),
+                    'launchURL': self.get_launch_url(enterprise_customer, course_id),
                     'contentTitle': 'Course Description',
                     'launchType': 3,
                     'contentID': course_id,
                 }
             ],
         }
-
-    def get_course_track_selection_url(self, enterprise_customer, course_id):
-        """
-        Given an EnterpriseCustomer and a course ID, craft a URL that links to the track selection page for that course.
-
-        Args:
-            enterprise_customer (EnterpriseCustomer): The EnterpriseCustomer that a URL needs to be built for
-            course_id (str): The string identifier of the course in question
-        """
-        netloc = enterprise_customer.site.domain
-        scheme = COURSE_URL_SCHEME
-        if enterprise_customer.identity_provider:
-            tpa_hint = urlencode({'tpa_hint': enterprise_customer.identity_provider})
-        else:
-            tpa_hint = ''
-        path = reverse('course_modes_choose', args=[course_id])
-        return urlunparse((scheme, netloc, path, None, tpa_hint, None))

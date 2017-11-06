@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('integrated_channel', '0002_delete_enterpriseintegratedchannel'),
-        ('sap_success_factors', '0009_move_audit_tables_to_base_integrated_channel')
+        ('sap_success_factors', '0010_move_audit_tables_to_base_integrated_channel')
     ]
 
     state_operations = [
