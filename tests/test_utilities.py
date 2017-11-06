@@ -1150,7 +1150,7 @@ class TestSAPSuccessFactorsUtils(unittest.TestCase):
     @mock.patch('enterprise.api_client.enterprise.EnterpriseApiClient.get_enterprise_course_runs')
     @mock.patch(
         'integrated_channels.sap_success_factors.exporters.course_metadata.SapSuccessFactorsCourseExporter'
-        '.get_course_track_selection_url'
+        '.get_launch_url'
     )
     @ddt.data(
         (
@@ -1319,10 +1319,10 @@ class TestSAPSuccessFactorsUtils(unittest.TestCase):
             previous_audit_summary,
             expected_audit_summary,
             expected_courses,
-            get_course_track_selection_url,
+            get_launch_url,
             get_enterprise_course_runs,
     ):
-        get_course_track_selection_url.return_value = ''
+        get_launch_url.return_value = ''
         get_enterprise_course_runs.return_value.values.return_value = course_runs
         course_exporter = SapSuccessFactorsCourseExporter(self.user, self.enterprise_configuration)
         audit_summary = course_exporter.resolve_removed_courses(previous_audit_summary)
