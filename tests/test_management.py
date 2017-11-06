@@ -83,14 +83,12 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
 
     @responses.activate
     @mock.patch('enterprise.api_client.lms.JwtBuilder', mock.Mock())
-    @mock.patch('integrated_channels.sap_success_factors.exporters.course_metadata.reverse')
     @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.get_oauth_access_token')
     @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.send_course_import')
-    def test_transmit_courseware_task_with_error(
+    def test_transmit_course_metadata_task_with_error(
             self,
             send_course_import_mock,
             get_oauth_access_token_mock,
-            track_selection_reverse_mock,
     ):
         """
         Verify the data transmission task for integrated channels with error.
@@ -101,7 +99,6 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         """
         get_oauth_access_token_mock.return_value = "token", datetime.utcnow()
         send_course_import_mock.return_value = 200, '{}'
-        track_selection_reverse_mock.return_value = '/course_modes/choose/course-v1:edX+DemoX+Demo_Course/'
 
         # Mock first integrated channel with failure
         enterprise_uuid_for_failure = str(self.enterprise_customer.uuid)
@@ -162,14 +159,12 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
 
     @responses.activate
     @mock.patch('enterprise.api_client.lms.JwtBuilder', mock.Mock())
-    @mock.patch('integrated_channels.sap_success_factors.exporters.course_metadata.reverse')
     @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.get_oauth_access_token')
     @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.send_course_import')
-    def test_transmit_courseware_task_success(
+    def test_transmit_course_metadata_task_success(
             self,
             send_course_import_mock,
             get_oauth_access_token_mock,
-            track_selection_reverse_mock
     ):
         """
         Test the data transmission task.
@@ -177,7 +172,6 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
         get_oauth_access_token_mock.return_value = "token", datetime.utcnow()
         send_course_import_mock.return_value = 200, '{}'
 
-        track_selection_reverse_mock.return_value = '/course_modes/choose/course-v1:edX+DemoX+Demo_Course/'
         uuid = str(self.enterprise_customer.uuid)
         course_run_ids = ['course-v1:edX+DemoX+Demo_Course_1', 'course-v1:edX+DemoX+Demo_Course_2']
         self.mock_ent_courses_api_with_pagination(
@@ -229,7 +223,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
                 assert message in log_capture.records[index].getMessage()
 
     @responses.activate
-    def test_transmit_courseware_task_no_channel(self):
+    def test_transmit_course_metadata_task_no_channel(self):
         """
         Test the data transmission task without any integrated channel.
         """
@@ -248,7 +242,7 @@ class TestTransmitCoursewareDataManagementCommand(unittest.TestCase, EnterpriseM
             assert not log_capture.records
 
     @responses.activate
-    def test_transmit_courseware_task_no_catalog(self):
+    def test_transmit_course_metadata_task_no_catalog(self):
         """
         Test the data transmission task with enterprise customer which have no
         course catalog.

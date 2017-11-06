@@ -64,13 +64,11 @@ class TestSuccessFactorsCourseTransmitter(unittest.TestCase):
         self.send_course_import_mock = send_course_import_mock.start()
         self.addCleanup(send_course_import_mock.stop)
 
-    @mock.patch('integrated_channels.sap_success_factors.exporters.course_metadata.reverse')
-    def test_transmit_success(self, track_selection_reverse_mock):
+    def test_transmit_success(self):
         """
         The catalog data transmission audit that gets saved after the transmission completes contains success data.
         """
         self.send_course_import_mock.return_value = 200, '{"success":"true"}'
-        track_selection_reverse_mock.return_value = '/course_modes/choose/course-v1:edX+DemoX+Demo_Course/'
         course_exporter_mock = mock.MagicMock(courses=self.payload)
         course_exporter_mock.export.return_value = [json.dumps(self.payload)]
         course_exporter_mock.resolve_removed_courses.return_value = {}
@@ -87,13 +85,11 @@ class TestSuccessFactorsCourseTransmitter(unittest.TestCase):
         assert catalog_transmission_audit.status == '200'
         assert catalog_transmission_audit.error_message == ''
 
-    @mock.patch('integrated_channels.sap_success_factors.exporters.course_metadata.reverse')
-    def test_transmit_failure(self, track_selection_reverse_mock):
+    def test_transmit_failure(self):
         """
         The catalog data transmission audit that gets saved after the transmission completes contains error data.
         """
         self.send_course_import_mock.side_effect = RequestException('error occurred')
-        track_selection_reverse_mock.return_value = '/course_modes/choose/course-v1:edX+DemoX+Demo_Course/'
         course_exporter_mock = mock.MagicMock(courses=self.payload)
         course_exporter_mock.export.return_value = [json.dumps(self.payload)]
         course_exporter_mock.resolve_removed_courses.return_value = {}
