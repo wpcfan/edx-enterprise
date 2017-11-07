@@ -16,12 +16,14 @@ from consent.errors import InvalidProxyConsent
 from consent.helpers import get_data_sharing_consent
 from consent.models import DataSharingConsent, ProxyDataSharingConsent
 from faker import Factory as FakerFactory
-from integrated_channels.integrated_channel.models import EnterpriseCustomerPluginConfiguration
-from integrated_channels.sap_success_factors.models import (
+from integrated_channels.integrated_channel.models import (
     CatalogTransmissionAudit,
-    LearnerDataTransmissionAudit,
+    EnterpriseCustomerPluginConfiguration,
+)
+from integrated_channels.sap_success_factors.models import (
     SAPSuccessFactorsEnterpriseCustomerConfiguration,
     SAPSuccessFactorsGlobalConfiguration,
+    SapSuccessFactorsLearnerDataTransmissionAudit,
 )
 from opaque_keys.edx.keys import CourseKey
 from pytest import mark, raises
@@ -75,9 +77,7 @@ class TestPendingEnrollment(unittest.TestCase):
         self.user = UserFactory(email=email)
         super(TestPendingEnrollment, self).setUp()
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test conversion to string.
@@ -111,9 +111,7 @@ class TestEnterpriseCourseEnrollment(unittest.TestCase):
         )
         super(TestEnterpriseCourseEnrollment, self).setUp()
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test conversion to string.
@@ -157,9 +155,7 @@ class TestEnterpriseCustomer(unittest.TestCase):
     Tests of the EnterpriseCustomer model.
     """
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``EnterpriseCustomer`` conversion to string.
@@ -261,9 +257,7 @@ class TestEnterpriseCustomerUserManager(unittest.TestCase):
     Tests EnterpriseCustomerUserManager.
     """
 
-    @ddt.data(
-        "albert.einstein@princeton.edu", "richard.feynman@caltech.edu", "leo.susskind@stanford.edu"
-    )
+    @ddt.data("albert.einstein@princeton.edu", "richard.feynman@caltech.edu", "leo.susskind@stanford.edu")
     def test_link_user_existing_user(self, user_email):
         enterprise_customer = EnterpriseCustomerFactory()
         user = UserFactory(email=user_email)
@@ -278,9 +272,7 @@ class TestEnterpriseCustomerUserManager(unittest.TestCase):
         assert actual_records.count() == 1
         assert PendingEnterpriseCustomerUser.objects.count() == 0, "No pending links should have been created"
 
-    @ddt.data(
-        "yoda@jeditemple.net", "luke_skywalker@resistance.org", "darth_vader@empire.com"
-    )
+    @ddt.data("yoda@jeditemple.net", "luke_skywalker@resistance.org", "darth_vader@empire.com")
     def test_link_user_no_user(self, user_email):
         enterprise_customer = EnterpriseCustomerFactory()
 
@@ -377,9 +369,7 @@ class TestEnterpriseCustomerUser(unittest.TestCase):
     Tests of the EnterpriseCustomerUser model.
     """
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``EnterpriseCustomerUser`` conversion to string.
@@ -393,9 +383,7 @@ class TestEnterpriseCustomerUser(unittest.TestCase):
         )
         self.assertEqual(method(customer_user), expected_to_str)
 
-    @ddt.data(
-        "albert.einstein@princeton.edu", "richard.feynman@caltech.edu", "leo.susskind@stanford.edu"
-    )
+    @ddt.data("albert.einstein@princeton.edu", "richard.feynman@caltech.edu", "leo.susskind@stanford.edu")
     def test_user_property_user_exists(self, email):
         user_instance = UserFactory(email=email)
         enterprise_customer_user = EnterpriseCustomerUserFactory(user_id=user_instance.id)
@@ -406,9 +394,7 @@ class TestEnterpriseCustomerUser(unittest.TestCase):
         enterprise_customer_user = EnterpriseCustomerUserFactory(user_id=user_id)
         assert enterprise_customer_user.user is None
 
-    @ddt.data(
-        "albert.einstein@princeton.edu", "richard.feynman@caltech.edu", "leo.susskind@stanford.edu"
-    )
+    @ddt.data("albert.einstein@princeton.edu", "richard.feynman@caltech.edu", "leo.susskind@stanford.edu")
     def test_user_email_property_user_exists(self, email):
         user = UserFactory(email=email)
         enterprise_customer_user = EnterpriseCustomerUserFactory(user_id=user.id)
@@ -418,9 +404,7 @@ class TestEnterpriseCustomerUser(unittest.TestCase):
         enterprise_customer_user = EnterpriseCustomerUserFactory(user_id=42)
         assert enterprise_customer_user.user_email is None
 
-    @ddt.data(
-        "alberteinstein", "richardfeynman", "leosusskind"
-    )
+    @ddt.data("alberteinstein", "richardfeynman", "leosusskind")
     def test_username_property_user_exists(self, username):
         user_instance = UserFactory(username=username)
         enterprise_customer_user = EnterpriseCustomerUserFactory(user_id=user_instance.id)
@@ -611,9 +595,7 @@ class TestPendingEnterpriseCustomerUser(unittest.TestCase):
     Tests of the PendingEnterpriseCustomerUser model.
     """
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``EnterpriseCustomerUser`` conversion to string.
@@ -645,9 +627,7 @@ class TestEnterpriseCustomerBrandingConfiguration(unittest.TestCase):
         file_mock.size = size
         return file_mock
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``EnterpriseCustomerUser`` conversion to string.
@@ -792,9 +772,7 @@ class TestEnterpriseCustomerIdentityProvider(unittest.TestCase):
     Tests of the EnterpriseCustomerIdentityProvider model.
     """
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``EnterpriseCustomerIdentityProvider`` conversion to string.
@@ -831,9 +809,7 @@ class TestEnterpriseCustomerEntitlements(unittest.TestCase):
     """
     Tests of the TestEnterpriseCustomerEntitlements model.
     """
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``TestEnterpriseCustomerEntitlements`` conversion to string.
@@ -869,9 +845,7 @@ class TestEnterpriseCustomerCatalog(unittest.TestCase):
         self.enterprise_name = 'enterprisewithacatalog'
         super(TestEnterpriseCustomerCatalog, self).setUp()
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``EnterpriseCustomerCatalog`` conversion to string.
@@ -974,9 +948,7 @@ class TestEnrollmentNotificationEmailTemplate(unittest.TestCase):
         assert plain == 'This is a template - testing real course, filled in'
         assert html == '<b>This is an HTML template! real course!!!</b>'
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test conversion to string.
@@ -1041,9 +1013,7 @@ class TestProxyDataSharingConsent(TransactionTestCase):
             course_id='hard_course_2017'
         )
 
-    @ddt.data(
-        'commit', 'save'
-    )
+    @ddt.data('commit', 'save')
     def test_commit_and_synonyms(self, func):
         """
         Test that ``ProxyDataSharingConsent``'s ``commit`` method (and any synonyms) properly creates/saves/returns
@@ -1074,9 +1044,7 @@ class TestProxyDataSharingConsent(TransactionTestCase):
         the_only_enterprise_customer = EnterpriseCustomer.objects.all().first()  # pylint: disable=no-member
         assert the_only_enterprise_customer == proxy_dsc.enterprise_customer
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``ProxyDataSharingConsent`` conversion to string
@@ -1147,9 +1115,7 @@ class TestProxyDataSharingConsent(TransactionTestCase):
         for attr, val in expected_attrs.items():
             assert getattr(proxy_dsc, attr) == val
 
-    @ddt.data(
-        True, False
-    )
+    @ddt.data(True, False)
     def test_consent_exists_proxy_enrollment(self, user_exists):
         """
         If we did proxy enrollment, we return ``True`` for the consent existence question.
@@ -1175,9 +1141,7 @@ class TestDataSharingConsent(unittest.TestCase):
     Tests of the ``DataSharingConsent`` model.
     """
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``DataSharingConsent`` conversion to string
@@ -1197,36 +1161,37 @@ class TestDataSharingConsent(unittest.TestCase):
 @mark.django_db
 class TestEnterpriseCustomerPluginConfiguration(unittest.TestCase):
     """
-    Tests of the EnterpriseCustomerPluginConfiguration abstract model.
+    Tests of the ``EnterpriseCustomerPluginConfiguration`` base model.
     """
 
     def setUp(self):
-        self.abstract_base = EnterpriseCustomerPluginConfiguration()
+        self.enterprise_customer = EnterpriseCustomerFactory()
+        self.config = EnterpriseCustomerPluginConfiguration(enterprise_customer=self.enterprise_customer)
         super(TestEnterpriseCustomerPluginConfiguration, self).setUp()
 
     def test_channel_code_raises(self):
         with raises(NotImplementedError):
-            self.abstract_base.channel_code()
+            self.config.channel_code()
 
-    def test_get_learner_data_record_raises(self):
-        with raises(NotImplementedError):
-            self.abstract_base.get_learner_data_record(mock.Mock())
+    @mock.patch('integrated_channels.integrated_channel.models.LearnerExporter')
+    def test_get_learner_data_exporter(self, mock_learner_exporter):
+        mock_learner_exporter.return_value = 'mock_learner_exporter'
+        assert self.config.get_learner_data_exporter(None) == 'mock_learner_exporter'
 
-    def test_get_learner_data_exporter_raises(self):
-        with raises(NotImplementedError):
-            self.abstract_base.get_learner_data_exporter(mock.Mock())
+    @mock.patch('integrated_channels.integrated_channel.models.LearnerTransmitter')
+    def test_get_learner_data_transmitter_raises(self, mock_learner_transmitter):
+        mock_learner_transmitter.return_value = 'mock_learner_transmitter'
+        assert self.config.get_learner_data_transmitter() == 'mock_learner_transmitter'
 
-    def test_get_learner_data_transmitter_raises(self):
-        with raises(NotImplementedError):
-            self.abstract_base.get_learner_data_transmitter()
+    @mock.patch('integrated_channels.integrated_channel.models.CourseExporter')
+    def test_get_course_data_exporter_raises(self, mock_course_exporter):
+        mock_course_exporter.return_value = 'mock_course_exporter'
+        assert self.config.get_course_data_exporter(None) == 'mock_course_exporter'
 
-    def test_get_course_data_exporter_raises(self):
-        with raises(NotImplementedError):
-            self.abstract_base.get_course_data_exporter(None)
-
-    def test_get_course_data_transmitter_raises(self):
-        with raises(NotImplementedError):
-            self.abstract_base.get_course_data_transmitter()
+    @mock.patch('integrated_channels.integrated_channel.models.CourseTransmitter')
+    def test_get_course_data_transmitter_raises(self, mock_course_transmitter):
+        mock_course_transmitter.return_value = 'mock_course_transmitter'
+        assert self.config.get_course_data_transmitter() == 'mock_course_transmitter'
 
 
 @mark.django_db
@@ -1235,9 +1200,8 @@ class TestCatalogTransmissionAudit(unittest.TestCase):
     """
     Tests of the CatalogTransmissionAudit model.
     """
-    @ddt.data(
-        str, repr
-    )
+
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``CatalogTransmissionAudit`` conversion to string
@@ -1255,10 +1219,11 @@ class TestCatalogTransmissionAudit(unittest.TestCase):
 
 @mark.django_db
 @ddt.ddt
-class TestLearnerDataTransmissionAudit(unittest.TestCase):
+class TestSapSuccessFactorsLearnerDataTransmissionAudit(unittest.TestCase):
     """
-    Tests of the ``LearnerDataTransmissionAudit`` model.
+    Tests of the ``SapSuccessFactorsLearnerDataTransmissionAudit`` model.
     """
+
     payload_format = (
         '{{'
         '"comments": "", '
@@ -1278,14 +1243,12 @@ class TestLearnerDataTransmissionAudit(unittest.TestCase):
         '}}'
     )
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
-        Test ``LearnerDataTransmissionAudit`` conversion to string
+        Test ``SapSuccessFactorsLearnerDataTransmissionAudit`` conversion to string
         """
-        learner_audit = LearnerDataTransmissionAudit(
+        learner_audit = SapSuccessFactorsLearnerDataTransmissionAudit(
             id=1,
             enterprise_course_enrollment_id=5,
             sapsf_user_id='sap_user',
@@ -1297,7 +1260,7 @@ class TestLearnerDataTransmissionAudit(unittest.TestCase):
             error_message=None
         )
         expected_to_str = (
-            "<LearnerDataTransmissionAudit 1 for enterprise enrollment 5, SAP user sap_user,"
+            "<SapSuccessFactorsLearnerDataTransmissionAudit 1 for enterprise enrollment 5, SAPSF user sap_user,"
             " and course course-v1:edX+DemoX+DemoCourse>"
         )
         assert expected_to_str == method(learner_audit)
@@ -1321,9 +1284,7 @@ class TestSAPSuccessFactorsEnterpriseCustomerConfiguration(unittest.TestCase):
         )
         super(TestSAPSuccessFactorsEnterpriseCustomerConfiguration, self).setUp()
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``SAPSuccessFactorsEnterpriseCustomerConfiguration`` conversion to string
@@ -1336,67 +1297,6 @@ class TestSAPSuccessFactorsEnterpriseCustomerConfiguration(unittest.TestCase):
     def test_channel_code(self):
         assert self.config.channel_code() == 'SAP'
 
-    @mock.patch(
-        'integrated_channels.sap_success_factors.transmitters.learner_data.SuccessFactorsLearnerDataTransmitter')
-    @mock.patch('integrated_channels.sap_success_factors.transmitters.SAPSuccessFactorsAPIClient')
-    @mock.patch('enterprise.models.EnrollmentApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CertificatesApiClient')
-    @mock.patch('integrated_channels.integrated_channel.learner_data.CourseApiClient')
-    @mock.patch('enterprise.api_client.lms.JwtBuilder', mock.Mock())
-    def test_transmit_learner_data(
-            self, mock_course_api, mock_certificate_api, mock_enrollment_api, mock_sap_api, mock_sap_transmitter
-    ):
-        user = UserFactory()
-        course_id = 'course-v1:edX+DemoX+DemoCourse'
-        enterprise_customer_user = EnterpriseCustomerUserFactory(
-            user_id=user.id,
-            enterprise_customer=self.enterprise_customer,
-        )
-        enrollment = EnterpriseCourseEnrollmentFactory(
-            enterprise_customer_user=enterprise_customer_user,
-            course_id=course_id,
-        )
-
-        # Mock instructor-paced course details
-        mock_course_api.return_value.get_course_details.return_value = dict(
-            pacing='instructor'
-        )
-
-        # Return a mock certificate
-        certificate = dict(
-            user=user,
-            course_id=course_id,
-            grade="A-",
-            is_passing=True,
-            created_date='2017-01-02T03:04:05:00Z'
-        )
-        mock_certificate_api.return_value.get_course_certificate.return_value = certificate
-
-        mock_enrollment_api.return_value.get_course_enrollment.return_value = dict(
-            mode="verified"
-        )
-
-        transmission_audit = LearnerDataTransmissionAudit(
-            enterprise_course_enrollment_id=enrollment.id,
-            sapsf_user_id=None,
-            course_id=enrollment.course_id,
-            course_completed=True,
-            completed_timestamp=1483326245000,
-            grade='A-',
-        )
-        mock_sap_api.get_oauth_access_token.return_value = "token", datetime.datetime.utcnow()
-        mock_transmitter_instance = mock_sap_transmitter.return_value
-        mock_sap_transmitter.transmit.return_value = transmission_audit
-
-        # Ensure an inactive config doesn't transmit anything.
-        self.config.transmit_learner_data('dummy-user')
-        assert not mock_transmitter_instance.transmit.called
-
-        # Test that an active config transmits the expected data record
-        self.config.active = True
-        self.config.transmit_learner_data('dummy-user')
-        assert mock_transmitter_instance.transmit.called_with(transmission_audit)
-
 
 @mark.django_db
 @ddt.ddt
@@ -1405,9 +1305,7 @@ class TestSAPSuccessFactorsGlobalConfiguration(unittest.TestCase):
     Tests of the SAPSuccessFactorsGlobalConfiguration model.
     """
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``SAPSuccessFactorsGlobalConfiguration`` conversion to string
@@ -1429,9 +1327,7 @@ class TestEnterpriseCustomerReportingConfiguration(unittest.TestCase):
     Tests of the EnterpriseCustomerReportingConfiguration model.
     """
 
-    @ddt.data(
-        str, repr
-    )
+    @ddt.data(str, repr)
     def test_string_conversion(self, method):
         """
         Test ``EnterpriseCustomerReportingConfiguration`` conversion to string
