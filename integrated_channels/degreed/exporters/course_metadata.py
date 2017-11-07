@@ -72,7 +72,7 @@ class DegreedCourseExporter(CourseExporter):  # pylint: disable=abstract-method
         """
         Return a transformed version of course tags.
 
-        Note: none formal category tags for courses actually exist at this time. Update this when and if they do.
+        Note: no formal category tags for courses actually exist at this time. Update this when and if they do.
         """
         return course_run.get('tags') or []
 

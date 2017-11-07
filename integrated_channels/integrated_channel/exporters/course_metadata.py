@@ -21,7 +21,7 @@ LOGGER = getLogger(__name__)
 
 class CourseExporter(Exporter):
     """
-    Base class for course metadata exporters to implement a "send" method on.
+    Base class for course metadata exporters.
     """
 
     AVAILABILITY_CURRENT = 'Current'
@@ -30,7 +30,10 @@ class CourseExporter(Exporter):
 
     def __init__(self, user, enterprise_configuration):
         """
-        Save the appropriate details for use elsewhere in the object.
+        Instantiate the following variables for use by subclassing course metadata exporters:
+
+        removed_courses_resolved (boolean): Indicates whether `resolve_removed_courses` has been called yet.
+        courses (list): A list of courses to be exported.
         """
         super(CourseExporter, self).__init__(user, enterprise_configuration)
         self.removed_courses_resolved = False
@@ -90,12 +93,12 @@ class CourseExporter(Exporter):
         this functionality to just return the entire set of ready-to-transmit courses for auditing
         purposes.
 
-        Note that these integrated channels are presumed to be handling updating their course
+        Note that such integrated channels are presumed to be handling updating their course
         availability on upstream catalogs through some other technique, i.e. DELETE requests
         made to the integrated channel's API to remove a course from the upstream catalog.
 
         An example of an integrated channel that may utilize this: SAPSF -- this function
-        would be overriden to generate a course metadata payload that embeds availability
+        would be overridden to generate a course metadata payload that embeds availability
         data to have a correct audit summary at the end of the transmission.
         """
         if self.removed_courses_resolved:

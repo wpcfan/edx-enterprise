@@ -13,23 +13,22 @@ from django.contrib.auth.models import User
 LOGGER = get_task_logger(__name__)
 
 
-@task(track_started=True)
+@task
 def transmit_course_metadata(username, channel_code, channel_pk):
     """
-    Task to send course data to each linked integrated channel
+    Task to send course metadata to each linked integrated channel.
 
     Arguments:
+        username (str): The username of the User to be used for making API requests for course metadata.
         channel_code (str): Capitalized identifier for the integrated channel
         channel_pk (str): Primary key for identifying integrated channel
 
     """
-    user = User.objects.get(username=username)
-    channel = INTEGRATED_CHANNEL_CHOICES[channel_code].objects.get(pk=channel_pk)
-
-    LOGGER.info('Processing courses for integrated channel using configuration: %s', channel)
-
+    api_user = User.objects.get(username=username)
+    integrated_channel = INTEGRATED_CHANNEL_CHOICES[channel_code].objects.get(pk=channel_pk)
+    LOGGER.info('Processing courses for integrated channel using configuration: %s', integrated_channel)
     try:
-        channel.transmit_course_data(user)
+        integrated_channel.transmit_course_data(api_user)
     except Exception:  # pylint: disable=broad-except
         exception_message = (
             'Transmission of course metadata failed for user "{username}" and for integrated '
@@ -42,11 +41,29 @@ def transmit_course_metadata(username, channel_code, channel_pk):
         LOGGER.exception(exception_message)
 
 
-@task(track_started=True)
+@task
 def transmit_learner_data(username, channel_code, channel_pk):
     """
-    Allows each enterprise customer's integrated channel to collect and transmit data within its own celery task.
+    Task to send learner data to each linked integrated channel.
+
+    Arguments:
+        username (str): The username of the User to be used for making API requests for learner data.
+        channel_code (str): Capitalized identifier for the integrated channel
+        channel_pk (str): Primary key for identifying integrated channel
+
     """
     api_user = User.objects.get(username=username)
     integrated_channel = INTEGRATED_CHANNEL_CHOICES[channel_code].objects.get(pk=channel_pk)
-    integrated_channel.transmit_learner_data(api_user)
+    LOGGER.info('Processing learners for integrated channel using configuration: %s', integrated_channel)
+    try:
+        integrated_channel.transmit_learner_data(api_user)
+    except Exception:  # pylint: disable=broad-except
+        exception_message = (
+            'Transmission of learner data failed for user "{username}" and for integrated '
+            'channel with code "{channel_code}" and id "{channel_pk}".'.format(
+                username=username,
+                channel_code=channel_code,
+                channel_pk=channel_pk,
+            )
+        )
+        LOGGER.exception(exception_message)

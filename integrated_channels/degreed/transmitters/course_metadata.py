@@ -16,7 +16,7 @@ class DegreedCourseTransmitter(CourseTransmitter):
 
     def __init__(self, enterprise_configuration, client=DegreedAPIClient):
         """
-        Ensure by default that the client used for Degreed Course Metadata transmission is ``DegreedAPIClient``.
+        By default, use the ``DegreedAPIClient`` for course metadata transmission to Degreed.
         """
         super(DegreedCourseTransmitter, self).__init__(
             enterprise_configuration=enterprise_configuration,

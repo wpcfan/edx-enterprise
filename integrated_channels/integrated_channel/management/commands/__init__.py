@@ -63,17 +63,12 @@ class IntegratedChannelCommandMixin(object):
             filter_kwargs['enterprise_customer'] = enterprise_customer
 
         channel_classes = self._get_channel_classes(options.get('channel'))
-
-        # Loop through each channel class (optionally for a specific enterprise customer)
         for channel_class in channel_classes:
-            # Use Active channels only
             integrated_channels = channel_class.objects.filter(active=True)
 
-            # Filter down to the integrated channels that are strictly relevant
             if filter_kwargs:
                 integrated_channels = integrated_channels.filter(**filter_kwargs)
 
-            # Gen the learner data to each integrated channel
             for integrated_channel in integrated_channels:
                 yield integrated_channel
 

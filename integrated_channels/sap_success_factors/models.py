@@ -52,7 +52,7 @@ class SAPSuccessFactorsGlobalConfiguration(ConfigurationModel):
 @python_2_unicode_compatible
 class SAPSuccessFactorsEnterpriseCustomerConfiguration(EnterpriseCustomerPluginConfiguration):
     """
-    The Enterprise specific configuration we need for integrating with SuccessFactors.
+    The Enterprise-specific configuration we need for integrating with SuccessFactors.
     """
 
     USER_TYPE_USER = 'user'

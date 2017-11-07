@@ -84,7 +84,7 @@ class CourseTransmitter(Transmitter):
 
         Returns:
             status_code (int): An integer status for the HTTP request
-            body (str): The SAP SuccessFactors server's response body
+            body (str): The server's response body
         """
         LOGGER.info(course_metadata)
         try:

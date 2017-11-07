@@ -12,6 +12,8 @@ import requests
 
 from django.apps import apps
 
+from six.moves.urllib.parse import urljoin  # pylint: disable=import-error
+
 
 class DegreedAPIClient(object):
     """
@@ -59,8 +61,14 @@ class DegreedAPIClient(object):
         Raises:
             HTTPError: if we received a failure response code from Degreed
         """
-        url = self.global_degreed_config.degreed_base_url + self.global_degreed_config.completion_status_api_path
-        return self._post(url, payload, self.COMPLETION_PROVIDER_SCOPE)
+        return self._post(
+            urljoin(
+                self.global_degreed_config.degreed_base_url,
+                self.global_degreed_config.completion_status_api_path
+            ),
+            payload,
+            self.COMPLETION_PROVIDER_SCOPE
+        )
 
     def send_course_import(self, payload):
         """
@@ -74,8 +82,14 @@ class DegreedAPIClient(object):
         Raises:
             HTTPError: if we received a failure response code from Degreed
         """
-        url = self.global_degreed_config.degreed_base_url + self.global_degreed_config.course_api_path
-        return self._post(url, payload, self.CONTENT_PROVIDER_SCOPE)
+        return self._post(
+            urljoin(
+                self.global_degreed_config.degreed_base_url,
+                self.global_degreed_config.course_api_path
+            ),
+            payload,
+            self.CONTENT_PROVIDER_SCOPE
+        )
 
     def _post(self, url, data, scope):
         """
@@ -84,7 +98,9 @@ class DegreedAPIClient(object):
         Args:
             url (str): The url to post to.
             data (str): The json encoded payload to post.
-            scope (str): Must be one of
+            scope (str): Must be one of the scopes Degreed expects:
+                        - `CONTENT_PROVIDER_SCOPE`
+                        - `COMPLETION_PROVIDER_SCOPE`
         """
         now = datetime.datetime.utcnow()
         if self.session is None or self.expires_at is None or now >= self.expires_at:
@@ -129,12 +145,9 @@ class DegreedAPIClient(object):
         Raises:
             HTTPError: If we received a failure response code from Degreed.
             RequestException: If an unexpected response format was received that we could not parse.
-            ValueError: If the provided scope does not match any available Degreed API provider scopes.
         """
-        url = self.global_degreed_config.degreed_base_url + self.global_degreed_config.oauth_api_path
-
         response = requests.post(
-            url,
+            urljoin(self.global_degreed_config.degreed_base_url, self.global_degreed_config.oauth_api_path),
             data={
                 'grant_type': 'password',
                 'username': user_id,
@@ -148,6 +161,7 @@ class DegreedAPIClient(object):
         response.raise_for_status()
         data = response.json()
         try:
-            return data['access_token'], datetime.datetime.utcfromtimestamp(data['expires_in'] + int(time.time()))
+            expires_at = data['expires_in'] + int(time.time())
+            return data['access_token'], datetime.datetime.utcfromtimestamp(expires_at)
         except KeyError:
             raise requests.RequestException(response=response)

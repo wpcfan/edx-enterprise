@@ -25,7 +25,7 @@ class Transmitter(object):
             * client - The REST API client that'll transmit serialized data.
         """
         self.enterprise_configuration = enterprise_configuration
-        self.client = client(enterprise_configuration) if client is not None else None
+        self.client = client(enterprise_configuration) if client else None
 
     def transmit(self, payload):
         """

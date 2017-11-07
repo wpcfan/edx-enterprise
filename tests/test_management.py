@@ -9,6 +9,7 @@ import unittest
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 
+import ddt
 import mock
 import responses
 from faker import Factory as FakerFactory
@@ -315,7 +316,7 @@ class TestTransmitLearnerData(unittest.TestCase):
         self.api_user = factories.UserFactory(username='staff_user', id=1)
         self.user = factories.UserFactory(id=2)
         self.course_id = COURSE_ID
-        self.enterprise_customer = factories.EnterpriseCustomerFactory()
+        self.enterprise_customer = factories.EnterpriseCustomerFactory(name='Spaghetti Enterprise')
         self.identity_provider = FakerFactory.create().slug()  # pylint: disable=no-member
         factories.EnterpriseCustomerIdentityProviderFactory(
             provider_id=self.identity_provider,
@@ -493,76 +494,78 @@ def get_expected_output(**expected_completion):
         '"userID": "{user_id}"'
         '}}'
     )
-    return output_template.format(
-        user_id='remote-user-id',
-        course_id=COURSE_ID,
-        provider_id="EDX",
-        **expected_completion
-    )
+    expected_output = [
+        "Processing learners for integrated channel using configuration: "
+        "<SAPSuccessFactorsEnterpriseCustomerConfiguration for Enterprise Spaghetti Enterprise>",
+        output_template.format(user_id='remote-user-id', course_id=COURSE_ID, provider_id="EDX", **expected_completion)
+    ]
+    return expected_output
 
 
-@responses.activate
+@ddt.ddt
 @mark.django_db
-@mark.parametrize('command_kwargs,certificate,self_paced,end_date,passed,expected_completion', [
-    # Certificate marks course completion
-    (dict(), MOCK_PASSING_CERTIFICATE, False, None, False, CERTIFICATE_PASSING_COMPLETION),
-    (dict(), MOCK_FAILING_CERTIFICATE, False, None, False, CERTIFICATE_FAILING_COMPLETION),
-    # channel code is case-insensitive
-    (dict(channel='sap'), MOCK_PASSING_CERTIFICATE, False, None, False, CERTIFICATE_PASSING_COMPLETION),
-    (dict(channel='SAP'), MOCK_PASSING_CERTIFICATE, False, None, False, CERTIFICATE_PASSING_COMPLETION),
-    (dict(channel='sap'), MOCK_FAILING_CERTIFICATE, False, None, False, CERTIFICATE_FAILING_COMPLETION),
-    (dict(channel='SAP'), MOCK_FAILING_CERTIFICATE, False, None, False, CERTIFICATE_FAILING_COMPLETION),
-    # enterprise_customer UUID gets filled in below
-    (dict(enterprise_customer=None), MOCK_PASSING_CERTIFICATE, False, None, False, CERTIFICATE_PASSING_COMPLETION),
-    (dict(enterprise_customer=None, channel='sap'), MOCK_PASSING_CERTIFICATE, False, None, False,
-     CERTIFICATE_PASSING_COMPLETION),
-    (dict(enterprise_customer=None), MOCK_FAILING_CERTIFICATE, False, None, False, CERTIFICATE_FAILING_COMPLETION),
-    (dict(enterprise_customer=None, channel='sap'), MOCK_FAILING_CERTIFICATE, False, None, False,
-     CERTIFICATE_FAILING_COMPLETION),
-
-    # Instructor-paced course with no certificates issued yet results in incomplete course data
-    (dict(), None, False, None, False, dict(completed='false', timestamp='null', grade='In Progress')),
-
-    # Self-paced course with no end date send grade=Pass, or grade=In Progress, depending on current grade.
-    (dict(), None, True, None, False, dict(completed='false', timestamp='null', grade='In Progress')),
-    (dict(), None, True, None, True, dict(completed='true', timestamp=NOW_TIMESTAMP, grade='Pass')),
-
-    # Self-paced course with future end date sends grade=Pass, or grade=In Progress, depending on current grade.
-    (dict(), None, True, FUTURE, False, dict(completed='false', timestamp='null', grade='In Progress')),
-    (dict(), None, True, FUTURE, True, dict(completed='true', timestamp=NOW_TIMESTAMP, grade='Pass')),
-
-    # Self-paced course with past end date sends grade=Pass, or grade=Fail, depending on current grade.
-    (dict(), None, True, PAST, False, dict(completed='false', timestamp=PAST_TIMESTAMP, grade='Fail')),
-    (dict(), None, True, PAST, True, dict(completed='true', timestamp=PAST_TIMESTAMP, grade='Pass')),
-])
-@mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.get_oauth_access_token')
-@mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.send_completion_status')
-def test_transmit_learner_data(
-        send_completion_status,
-        get_oauth_access_token_mock,
-        caplog,
-        command_kwargs,
-        certificate,
-        self_paced,
-        end_date,
-        passed,
-        expected_completion
-):
+class TestLearnerDataTransmitIntegration(unittest.TestCase):
     """
-    Test the log output from a successful run of the transmit_learner_data management command,
-    using all the ways we can invoke it.
+    Integration tests for learner data transmission.
     """
-    caplog.set_level(logging.INFO)
 
-    # Mock the Open edX environment classes
-    with transmit_learner_data_context(command_kwargs, certificate, self_paced, end_date, passed) as (args, kwargs):
+    @responses.activate
+    @ddt.data(
+        # Certificate marks course completion
+        (dict(), MOCK_PASSING_CERTIFICATE, False, None, False, CERTIFICATE_PASSING_COMPLETION),
+        (dict(), MOCK_FAILING_CERTIFICATE, False, None, False, CERTIFICATE_FAILING_COMPLETION),
+        # channel code is case-insensitive
+        (dict(channel='sap'), MOCK_PASSING_CERTIFICATE, False, None, False, CERTIFICATE_PASSING_COMPLETION),
+        (dict(channel='SAP'), MOCK_PASSING_CERTIFICATE, False, None, False, CERTIFICATE_PASSING_COMPLETION),
+        (dict(channel='sap'), MOCK_FAILING_CERTIFICATE, False, None, False, CERTIFICATE_FAILING_COMPLETION),
+        (dict(channel='SAP'), MOCK_FAILING_CERTIFICATE, False, None, False, CERTIFICATE_FAILING_COMPLETION),
+        # enterprise_customer UUID gets filled in below
+        (dict(enterprise_customer=None), MOCK_PASSING_CERTIFICATE, False, None, False, CERTIFICATE_PASSING_COMPLETION),
+        (dict(enterprise_customer=None, channel='sap'), MOCK_PASSING_CERTIFICATE, False, None, False,
+         CERTIFICATE_PASSING_COMPLETION),
+        (dict(enterprise_customer=None), MOCK_FAILING_CERTIFICATE, False, None, False, CERTIFICATE_FAILING_COMPLETION),
+        (dict(enterprise_customer=None, channel='sap'), MOCK_FAILING_CERTIFICATE, False, None, False,
+         CERTIFICATE_FAILING_COMPLETION),
+
+        # Instructor-paced course with no certificates issued yet results in incomplete course data
+        (dict(), None, False, None, False, dict(completed='false', timestamp='null', grade='In Progress')),
+
+        # Self-paced course with no end date send grade=Pass, or grade=In Progress, depending on current grade.
+        (dict(), None, True, None, False, dict(completed='false', timestamp='null', grade='In Progress')),
+        (dict(), None, True, None, True, dict(completed='true', timestamp=NOW_TIMESTAMP, grade='Pass')),
+
+        # Self-paced course with future end date sends grade=Pass, or grade=In Progress, depending on current grade.
+        (dict(), None, True, FUTURE, False, dict(completed='false', timestamp='null', grade='In Progress')),
+        (dict(), None, True, FUTURE, True, dict(completed='true', timestamp=NOW_TIMESTAMP, grade='Pass')),
+
+        # Self-paced course with past end date sends grade=Pass, or grade=Fail, depending on current grade.
+        (dict(), None, True, PAST, False, dict(completed='false', timestamp=PAST_TIMESTAMP, grade='Fail')),
+        (dict(), None, True, PAST, True, dict(completed='true', timestamp=PAST_TIMESTAMP, grade='Pass')),
+    )
+    @ddt.unpack
+    @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.get_oauth_access_token')
+    @mock.patch('integrated_channels.sap_success_factors.client.SAPSuccessFactorsAPIClient.send_completion_status')
+    def test_transmit_learner_data(
+            self,
+            command_kwargs,
+            certificate,
+            self_paced,
+            end_date,
+            passed,
+            expected_completion,
+            send_completion_status,
+            get_oauth_access_token_mock,
+    ):
+        """
+        Test the log output from a successful run of the transmit_learner_data management command,
+        using all the ways we can invoke it.
+        """
         get_oauth_access_token_mock.return_value = "token", datetime.utcnow()
         send_completion_status.return_value = 200, '{}'
-        # Call the management command
-        call_command('transmit_learner_data', *args, **kwargs)
-
-    # Ensure the correct learner_data record was logged
-    assert len(caplog.records) == 1
-
-    expected_output = get_expected_output(**expected_completion)
-    assert expected_output in caplog.records[0].message
+        # Mock the Open edX environment classes
+        with transmit_learner_data_context(command_kwargs, certificate, self_paced, end_date, passed) as (args, kwargs):
+            with LogCapture(level=logging.INFO) as log_capture:
+                expected_output = get_expected_output(**expected_completion)
+                call_command('transmit_learner_data', *args, **kwargs)
+                for index, message in enumerate(expected_output):
+                    assert message in log_capture.records[index].getMessage()

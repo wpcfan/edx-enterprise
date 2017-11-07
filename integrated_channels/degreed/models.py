@@ -101,7 +101,7 @@ class DegreedGlobalConfiguration(ConfigurationModel):
 @python_2_unicode_compatible
 class DegreedEnterpriseCustomerConfiguration(EnterpriseCustomerPluginConfiguration):
     """
-    The Enterprise specific configuration we need for integrating with Degreed.
+    The Enterprise-specific configuration we need for integrating with Degreed.
     """
 
     key = models.CharField(

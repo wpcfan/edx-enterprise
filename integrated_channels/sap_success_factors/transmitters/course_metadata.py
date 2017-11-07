@@ -16,7 +16,7 @@ class SapSuccessFactorsCourseTransmitter(CourseTransmitter):
 
     def __init__(self, enterprise_configuration, client=SAPSuccessFactorsAPIClient):
         """
-        Ensure by default that the client used for SAPSF Course Metadata transmission is ``SAPSuccessFactorsAPIClient``.
+        By default, use the ``SAPSuccessFactorsAPIClient`` for course metadata transmission to SAPSF.
         """
         super(SapSuccessFactorsCourseTransmitter, self).__init__(
             enterprise_configuration=enterprise_configuration,

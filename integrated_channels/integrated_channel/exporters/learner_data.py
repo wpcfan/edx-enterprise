@@ -45,8 +45,8 @@ class LearnerExporter(Exporter):
         * ``enterprise_configuration``: EnterpriseCustomerPluginConfiguration instance for the current channel.
         """
         # The Grades API and Certificates API clients require an OAuth2 access token,
-        #  so cache the client to allow the token to be reused. Cache other clients for
-        #  general reuse.
+        # so cache the client to allow the token to be reused. Cache other clients for
+        # general reuse.
         self.grades_api = None
         self.certificates_api = None
         self.course_api = None
@@ -257,7 +257,7 @@ class LearnerExporter(Exporter):
             completed_date = now
             grade = self.grade_passing
 
-        # Otherwise, the course is still in progress
+        # Otherwise, the course is still in-progress
         else:
             completed_date = None
             grade = self.grade_incomplete

@@ -24,7 +24,7 @@ class SapSuccessFactorsLearnerTransmitter(LearnerTransmitter):
 
     def __init__(self, enterprise_configuration, client=SAPSuccessFactorsAPIClient):
         """
-        Ensure that, by default, the client used for SAPSF Learner Data transmission is ``SAPSuccessFactorsAPIClient``.
+        By default, use the ``SAPSuccessFactorsAPIClient`` for learner data transmission to SAPSF.
         """
         super(SapSuccessFactorsLearnerTransmitter, self).__init__(
             enterprise_configuration=enterprise_configuration,
@@ -49,7 +49,7 @@ class SapSuccessFactorsLearnerTransmitter(LearnerTransmitter):
             enterprise_enrollment_id = learner_data.enterprise_course_enrollment_id
             if learner_data.completed_timestamp is None:
                 # The user has not completed the course, so we shouldn't send a completion status call
-                LOGGER.debug('Skipping in progress enterprise enrollment {}'.format(enterprise_enrollment_id))
+                LOGGER.debug('Skipping in-progress enterprise enrollment {}'.format(enterprise_enrollment_id))
                 return None
 
             previous_transmissions = SapSuccessFactorsLearnerDataTransmissionAudit.objects.filter(

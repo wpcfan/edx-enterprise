@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Degreed module.
+The Degreed Integrated Channel package.
 """
 
 from __future__ import absolute_import, unicode_literals

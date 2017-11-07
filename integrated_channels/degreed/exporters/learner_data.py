@@ -36,11 +36,7 @@ class DegreedLearnerExporter(LearnerExporter):
         If no remote ID can be found, return None.
         """
         # Degreed expects completion dates of the form 'yyyy-mm-dd'.
-        completed_timestamp = '-'.join([
-            str(completed_date.year),
-            str(completed_date.month),
-            str(completed_date.day),
-        ]) if isinstance(completed_date, datetime) else None
+        completed_timestamp = completed_date.strftime("%Y-%m-%d") if isinstance(completed_date, datetime) else None
 
         degreed_user_id = enterprise_enrollment.enterprise_customer_user.get_remote_id()
         if degreed_user_id is not None:
@@ -57,6 +53,6 @@ class DegreedLearnerExporter(LearnerExporter):
             )
         else:
             LOGGER.debug(
-                'No learner data was sent for user "%s" because an Degreed user ID could not be found.',
+                'No learner data was sent for user "%s" because a Degreed user ID could not be found.',
                 enterprise_enrollment.enterprise_customer_user.username
             )
