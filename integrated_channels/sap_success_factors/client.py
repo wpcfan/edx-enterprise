@@ -40,12 +40,10 @@ class SAPSuccessFactorsAPIClient(object):
             HTTPError: If we received a failure response code from SAP SuccessFactors.
             RequestException: If an unexpected response format was received that we could not parse.
         """
-
         SAPSuccessFactorsGlobalConfiguration = apps.get_model(  # pylint: disable=invalid-name
-            app_label='sap_success_factors',
-            model_name='SAPSuccessFactorsGlobalConfiguration'
+            'sap_success_factors',
+            'SAPSuccessFactorsGlobalConfiguration'
         )
-
         global_sap_config = SAPSuccessFactorsGlobalConfiguration.current()
         url = url_base + global_sap_config.oauth_api_path
 
@@ -86,12 +84,7 @@ class SAPSuccessFactorsAPIClient(object):
         if not enterprise_configuration:
             raise ValueError('An SAPSuccessFactorsEnterpriseCustomerConfiguration must be supplied!')
 
-        SAPSuccessFactorsGlobalConfiguration = apps.get_model(  # pylint: disable=invalid-name
-            app_label='sap_success_factors',
-            model_name='SAPSuccessFactorsGlobalConfiguration'
-        )
-
-        self.global_sap_config = SAPSuccessFactorsGlobalConfiguration.current()
+        self.global_sap_config = apps.get_model('sap_success_factors', 'SAPSuccessFactorsGlobalConfiguration').current()
         self.enterprise_configuration = enterprise_configuration
         self._create_session()
 
@@ -122,7 +115,7 @@ class SAPSuccessFactorsAPIClient(object):
 
         Args:
             sap_user_id (str): The sap user id that the completion status is being sent for.
-            payload (str): JSON encoded object (serialized from LearnerDataTransmissionAudit)
+            payload (str): JSON encoded object (serialized from SapSuccessFactorsLearnerDataTransmissionAudit)
                 containing completion status fields per SuccessFactors documentation.
 
         Returns:
@@ -157,12 +150,10 @@ class SAPSuccessFactorsAPIClient(object):
             url (str): The url to post to.
             payload (str): The json encoded payload to post.
         """
-
         SAPSuccessFactorsEnterpriseCustomerConfiguration = apps.get_model(  # pylint: disable=invalid-name
-            app_label='sap_success_factors',
-            model_name='SAPSuccessFactorsEnterpriseCustomerConfiguration'
+            'sap_success_factors',
+            'SAPSuccessFactorsEnterpriseCustomerConfiguration'
         )
-
         oauth_access_token, _ = SAPSuccessFactorsAPIClient.get_oauth_access_token(
             self.enterprise_configuration.sapsf_base_url,
             self.enterprise_configuration.key,
