@@ -29,7 +29,7 @@ except ImportError:
 # Mapping between the channel code and the channel configuration class
 INTEGRATED_CHANNEL_CHOICES = {
     channel_class.channel_code(): channel_class
-    for channel_class in (SAPSuccessFactorsEnterpriseCustomerConfiguration, )
+    for channel_class in (SAPSuccessFactorsEnterpriseCustomerConfiguration,)
 }
 
 
@@ -37,6 +37,7 @@ class IntegratedChannelCommandMixin(object):
     """
     Contains common functionality for the IntegratedChannel management commands.
     """
+
     def add_arguments(self, parser):
         """
         Adds the optional arguments: ``--enterprise_customer``, ``--channel``
@@ -58,6 +59,36 @@ class IntegratedChannelCommandMixin(object):
                    'Omit this option to transmit to all configured, active integrated channels.'),
             choices=INTEGRATED_CHANNEL_CHOICES.keys(),
         )
+
+    def get_integrated_channels(self, options, **filter_kwargs):
+        """
+        Generates a list of active integrated channels, filtered from the given options.
+
+        Raises errors when invalid options are encountered.
+
+        See ``add_arguments`` for the accepted options.
+
+        filter_kwargs is passed as an additional set of parameters that jobs can use to restrict
+        the database query used to retrieve relevant integrated channels.
+        """
+        enterprise_customer = self._get_enterprise_customer(options.get('enterprise_customer'))
+        if enterprise_customer:
+            filter_kwargs['enterprise_customer'] = enterprise_customer
+
+        channel_classes = self._get_channel_classes(options.get('channel'))
+
+        # Loop through each channel class (optionally for a specific enterprise customer)
+        for channel_class in channel_classes:
+            # Use Active channels only
+            integrated_channels = channel_class.objects.filter(active=True)
+
+            # Filter down to the integrated channels that are strictly relevant
+            if filter_kwargs:
+                integrated_channels = integrated_channels.filter(**filter_kwargs)
+
+            # Gen the learner data to each integrated channel
+            for integrated_channel in integrated_channels:
+                yield integrated_channel
 
     @staticmethod
     def _get_enterprise_customer(uuid):
@@ -95,33 +126,3 @@ class IntegratedChannelCommandMixin(object):
             channel_classes = INTEGRATED_CHANNEL_CHOICES.values()
 
         return channel_classes
-
-    def get_integrated_channels(self, options, **filter_kwargs):
-        """
-        Generates a list of active integrated channels, filtered from the given options.
-
-        Raises errors when invalid options are encountered.
-
-        See ``add_arguments`` for the accepted options.
-
-        filter_kwargs is passed as an additional set of parameters that jobs can use to restrict
-        the database query used to retrieve relevant integrated channels.
-        """
-        enterprise_customer = self._get_enterprise_customer(options.get('enterprise_customer'))
-        if enterprise_customer:
-            filter_kwargs['enterprise_customer'] = enterprise_customer
-
-        channel_classes = self._get_channel_classes(options.get('channel'))
-
-        # Loop through each channel class (optionally for a specific enterprise customer)
-        for channel_class in channel_classes:
-            # Use Active channels only
-            integrated_channels = channel_class.objects.filter(active=True)
-
-            # Filter down to the integrated channels that are strictly relevant
-            if filter_kwargs:
-                integrated_channels = integrated_channels.filter(**filter_kwargs)
-
-            # Gen the learner data to each integrated channel
-            for integrated_channel in integrated_channels:
-                yield integrated_channel
