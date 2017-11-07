@@ -461,6 +461,9 @@ class EnterpriseCustomerCourseEnrollmentsSerializer(serializers.Serializer):
         pass
 
     def validate_lms_user_id(self, value):
+        """
+        Validates the lms_user_id, if is given, to see if there is an existing EnterpriseCustomerUser for it.
+        """
         enterprise_customer = self.context.get('enterprise_customer')
 
         try:
@@ -470,14 +473,21 @@ class EnterpriseCustomerCourseEnrollmentsSerializer(serializers.Serializer):
                 enterprise_customer=enterprise_customer
             )
         except models.EnterpriseCustomerUser.DoesNotExist:
-            raise serializers.ValidationError('Unable to find user {user} associated with enterprise {enterprise}'.format(
-                user=value,
-                enterprise=enterprise_customer.name
-            ))
+            raise serializers.ValidationError(
+                'Unable to find user {user} associated with enterprise {enterprise}'.format(
+                    user=value,
+                    enterprise=enterprise_customer.name
+                )
+            )
 
         return value
 
     def validate_tpa_user_id(self, value):
+        """
+        Validates the tpa_user_id, if is given, to see if there is an existing EnterpriseCustomerUser for it.
+
+        It first uses the third party auth api to find the associated username to do the lookup.
+        """
         enterprise_customer = self.context.get('enterprise_customer')
 
         try:
@@ -501,6 +511,11 @@ class EnterpriseCustomerCourseEnrollmentsSerializer(serializers.Serializer):
         return value
 
     def validate_user_email(self, value):
+        """
+        Validates the user_email, if given, to see if an existing EnterpriseCustomerUser exists for it.
+
+        If it does not, it does not fail validation, unlike for the other field validation methods above.
+        """
         enterprise_customer = self.context.get('enterprise_customer')
 
         try:
@@ -509,12 +524,12 @@ class EnterpriseCustomerCourseEnrollmentsSerializer(serializers.Serializer):
                 user_id=user.id,
                 enterprise_customer=enterprise_customer
             )
-        except User.DoesNotExist, models.EnterpriseCustomerUser.DoesNotExist:
+        except (models.EnterpriseCustomerUser.DoesNotExist, User.DoesNotExist):
             pass
 
         return value
 
-    def validate(self, data):
+    def validate(self, data):  # pylint: disable=arguments-differ
         """
         Validate that at least one of the user identifier fields has been passed in.
         """

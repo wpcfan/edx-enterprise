@@ -30,6 +30,7 @@ from django.utils.functional import lazy
 from django.utils.http import urlquote
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext
 
 from model_utils.models import TimeStampedModel
 
@@ -296,10 +297,8 @@ class EnterpriseCustomer(TimeStampedModel):
         course_details = CourseCatalogApiClient(catalog_api_user, self.site).get_course_run(course_id)
         if not course_details:
             LOGGER.warning(
-                _(
-                    "Course details were not found for course key {} - Course Catalog API returned nothing. "
-                    "Proceeding with enrollment, but notifications won't be sent"
-                ).format(course_id)
+                ugettext("Course details were not found for course key {} - Course Catalog API returned nothing. "
+                         "Proceeding with enrollment, but notifications won't be sent").format(course_id)
             )
             return
         course_path = urlquote('/courses/{course_id}/course'.format(course_id=course_id))

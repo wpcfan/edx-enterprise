@@ -12,23 +12,19 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
-from rest_framework.views import APIView
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.http import Http404
 from django.utils.decorators import method_decorator
 
 from enterprise import models
-from enterprise.admin.views import EnterpriseCustomerManageLearnersView
 from enterprise.api.filters import EnterpriseCustomerUserFilterBackend, UserFilterBackend
 from enterprise.api.pagination import get_paginated_response
 from enterprise.api.throttles import ServiceUserThrottle
 from enterprise.api.v1 import serializers
 from enterprise.api.v1.decorators import enterprise_customer_required, require_at_least_one_query_parameter
 from enterprise.api_client.discovery import CourseCatalogApiClient
-from enterprise.api_client.lms import ThirdPartyAuthApiClient
 from six.moves.urllib.parse import quote_plus, unquote  # pylint: disable=import-error,ungrouped-imports
 
 LOGGER = getLogger(__name__)
@@ -175,7 +171,7 @@ class EnterpriseCustomerViewSet(EnterpriseReadWriteModelViewSet):
     @detail_route(methods=['post'])
     def course_enrollments(self, request, pk):  # pylint: disable=invalid-name,unused-argument
         """
-
+        Creates a course enrollment for an EnterpriseCustomerUser.
         """
         enterprise_customer = self.get_object()
         serializer = serializers.EnterpriseCustomerCourseEnrollmentsSerializer(
@@ -188,8 +184,8 @@ class EnterpriseCustomerViewSet(EnterpriseReadWriteModelViewSet):
         if serializer.is_valid():
             serializer.save()
             return Response({'detail': 'success'}, status=HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
+        return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
 
 class EnterpriseCourseEnrollmentViewSet(EnterpriseReadWriteModelViewSet):
